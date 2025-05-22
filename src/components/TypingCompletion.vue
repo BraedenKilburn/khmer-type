@@ -116,7 +116,7 @@ onMounted(() => {
 }
 
 .restart-button {
-  background-color: #007bff;
+  background-color: var(--color-primary);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -126,17 +126,12 @@ onMounted(() => {
   transition: all 0.2s ease;
 
   &:hover {
-    background-color: #0056b3;
+    background-color: var(--color-primary);
   }
 
   &:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5);
-  }
-
-  &:focus-visible {
-    outline: 2px solid #007bff;
-    outline-offset: 2px;
+    box-shadow: 0 0 0 3px var(--color-focus);
   }
 }
 </style>

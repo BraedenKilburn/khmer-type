@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick, computed, useTemplateRef } from 'vue'
 import TypingCompletion from './TypingCompletion.vue'
+import KeyboardModeWarning from './KeyboardModeWarning.vue'
 
 const currentSentence = ref('រៀនវាយអក្សរខ្មែរ')
 const typedText = ref('')
 const cursorIndex = ref(0)
 const startTime = ref<number | null>(null)
 const endTime = ref<number | null>(null)
+const showKeyboardWarning = ref(false)
+const lastEnglishInputTime = ref(0)
 
 const typingAreaRef = useTemplateRef('typingAreaRef')
 const isFocused = ref(false)
@@ -32,6 +35,11 @@ const accuracy = computed(() => {
   }
   return Math.round((correct / cursorIndex.value) * 100)
 })
+
+// Function to check if a character is English
+function isEnglishChar(char: string): boolean {
+  return /^[a-zA-Z]$/.test(char)
+}
 
 function focusTypingArea() {
   if (typingAreaRef.value) typingAreaRef.value.focus()
@@ -93,6 +101,17 @@ const untypedSubstring = computed(() => {
 
 const handleKeydown = (event: KeyboardEvent) => {
   const key = event.key
+
+  // Check for English input
+  if (key.length === 1 && isEnglishChar(key)) {
+    const now = Date.now()
+    // Only show warning if it's been at least 1 second since last English input
+    if (now - lastEnglishInputTime.value > 1000) {
+      showKeyboardWarning.value = true
+    }
+    lastEnglishInputTime.value = now
+    return
+  }
 
   // Start timing on first keystroke
   if (!startTime.value && key.length === 1) {
@@ -163,6 +182,7 @@ function handleBlur() {
 
 <template>
   <div class="typing-container" @click="handleClickContainer" :class="{ 'is-focused': isFocused }">
+    <KeyboardModeWarning v-model:show="showKeyboardWarning" />
     <div
       class="typing-area"
       tabindex="0"
