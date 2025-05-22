@@ -1,15 +1,48 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick, computed, useTemplateRef } from 'vue'
+import TypingCompletion from './TypingCompletion.vue'
 
 const currentSentence = ref('រៀនវាយអក្សរខ្មែរ')
 const typedText = ref('')
 const cursorIndex = ref(0)
+const startTime = ref<number | null>(null)
+const endTime = ref<number | null>(null)
 
 const typingAreaRef = useTemplateRef('typingAreaRef')
 const isFocused = ref(false)
+const isComplete = computed(() => cursorIndex.value === currentSentence.value.length)
+
+const cpm = computed(() => {
+  if (!startTime.value || !endTime.value) return 0
+  const minutes = (endTime.value - startTime.value) / 60000
+  return Math.round(currentSentence.value.length / minutes)
+})
+
+const cps = computed(() => {
+  if (!startTime.value || !endTime.value) return 0
+  const seconds = (endTime.value - startTime.value) / 1000
+  return (currentSentence.value.length / seconds).toFixed(1)
+})
+
+const accuracy = computed(() => {
+  if (cursorIndex.value === 0) return 100
+  let correct = 0
+  for (let i = 0; i < cursorIndex.value; i++) {
+    if (currentSentence.value[i] === typedText.value[i]) correct++
+  }
+  return Math.round((correct / cursorIndex.value) * 100)
+})
 
 function focusTypingArea() {
   if (typingAreaRef.value) typingAreaRef.value.focus()
+}
+
+function resetTyping() {
+  typedText.value = ''
+  cursorIndex.value = 0
+  startTime.value = null
+  endTime.value = null
+  nextTick(() => focusTypingArea())
 }
 
 /**
@@ -61,6 +94,11 @@ const untypedSubstring = computed(() => {
 const handleKeydown = (event: KeyboardEvent) => {
   const key = event.key
 
+  // Start timing on first keystroke
+  if (!startTime.value && key.length === 1) {
+    startTime.value = Date.now()
+  }
+
   // Prevent default behavior for common keys in a typing test context
   // that might interfere (like space scrolling, backspace navigating)
   // Check for specific keys or single character keys while avoiding modifiers (Ctrl, Alt, Meta)
@@ -87,6 +125,11 @@ const handleKeydown = (event: KeyboardEvent) => {
   if (key.length === 1 && cursorIndex.value < currentSentence.value.length) {
     typedText.value += key
     cursorIndex.value++
+
+    // Check if we've completed the sentence
+    if (cursorIndex.value === currentSentence.value.length) {
+      endTime.value = Date.now()
+    }
   }
 }
 
@@ -129,9 +172,17 @@ function handleBlur() {
     >
       <span class="char-correct">{{ correctSubstring }}</span>
       <span class="char-incorrect">{{ incorrectSubstring }}</span>
-      <span id="cursor" v-if="isFocused"></span>
+      <span id="cursor" v-if="isFocused && !isComplete"></span>
       <span class="char-untyped">{{ untypedSubstring }}</span>
     </div>
+
+    <TypingCompletion
+      v-if="isComplete"
+      :cpm="cpm"
+      :cps="cps"
+      :accuracy="accuracy"
+      @restart="resetTyping"
+    />
   </div>
 </template>
 
@@ -147,6 +198,7 @@ function handleBlur() {
   text-align: left;
   line-height: 2;
   cursor: text;
+  position: relative;
   transition:
     border-color 0.3s ease,
     box-shadow 0.3s ease;
