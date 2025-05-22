@@ -138,8 +138,8 @@ function handleBlur() {
 <style scoped>
 .typing-container {
   padding: 30px;
-  background-color: #fff;
-  border: 1px solid #ddd;
+  background-color: var(--color-background-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
   max-width: 1200px;
@@ -169,7 +169,7 @@ function handleBlur() {
       white-space: pre-wrap;
 
       &.char-correct {
-        color: #333;
+        color: var(--color-text);
       }
 
       &.char-incorrect {
@@ -178,7 +178,8 @@ function handleBlur() {
       }
 
       &.char-untyped {
-        color: #aaa;
+        color: var(--color-text);
+        opacity: 0.5;
       }
     }
 
