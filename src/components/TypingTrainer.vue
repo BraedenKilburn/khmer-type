@@ -1,19 +1,30 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, computed, useTemplateRef } from 'vue'
-import TypingCompletion from './TypingCompletion.vue'
-import KeyboardModeWarning from './KeyboardModeWarning.vue'
+import {
+  ref,
+  onMounted,
+  onBeforeUnmount,
+  nextTick,
+  computed,
+  useTemplateRef,
+  watch,
+} from 'vue'
+import { useToast } from 'primevue/usetoast';
+import TypingCompletion from '@/components/TypingCompletion.vue'
 
 const currentSentence = ref('រៀនវាយអក្សរខ្មែរ')
 const typedText = ref('')
 const cursorIndex = ref(0)
 const startTime = ref<number | null>(null)
 const endTime = ref<number | null>(null)
-const showKeyboardWarning = ref(false)
-const lastEnglishInputTime = ref(0)
 
 const typingAreaRef = useTemplateRef('typingAreaRef')
 const isFocused = ref(false)
-const isComplete = computed(() => cursorIndex.value === currentSentence.value.length)
+
+const typingCompletionVisible = ref(false)
+const isComplete = computed(() => cursorIndex.value === currentSentence.value.length);
+watch(isComplete, (isCompleted) => {
+  typingCompletionVisible.value = isCompleted
+})
 
 const cpm = computed(() => {
   if (!startTime.value || !endTime.value) return 0
@@ -99,17 +110,19 @@ const untypedSubstring = computed(() => {
   return currentSentence.value.substring(cursorIndex.value)
 })
 
+const toast = useToast()
 const handleKeydown = (event: KeyboardEvent) => {
   const key = event.key
 
   // Check for English input
   if (key.length === 1 && isEnglishChar(key)) {
-    const now = Date.now()
-    // Only show warning if it's been at least 1 second since last English input
-    if (now - lastEnglishInputTime.value > 1000) {
-      showKeyboardWarning.value = true
-    }
-    lastEnglishInputTime.value = now
+    toast.removeAllGroups()
+    toast.add({
+      severity: 'info',
+      summary: 'Unexpected English Input',
+      detail: 'Please switch to Khmer input mode to type correctly.',
+      life: 3000,
+    })
     return
   }
 
@@ -182,7 +195,6 @@ function handleBlur() {
 
 <template>
   <div class="typing-container" @click="handleClickContainer" :class="{ 'is-focused': isFocused }">
-    <KeyboardModeWarning v-model:show="showKeyboardWarning" />
     <div
       class="typing-area"
       tabindex="0"
@@ -197,11 +209,11 @@ function handleBlur() {
     </div>
 
     <TypingCompletion
-      v-if="isComplete"
+      v-model:visible="typingCompletionVisible"
       :cpm="cpm"
       :cps="cps"
       :accuracy="accuracy"
-      @restart="resetTyping"
+      @update:visible="resetTyping"
     />
   </div>
 </template>
@@ -209,10 +221,8 @@ function handleBlur() {
 <style scoped>
 .typing-container {
   padding: 30px;
-  background-color: var(--color-background-secondary);
-  border: 1px solid var(--color-border);
+  background-color: var(--p-surface-secondary);
   border-radius: 12px;
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
   max-width: 1200px;
   width: 95%;
   text-align: left;
@@ -224,8 +234,8 @@ function handleBlur() {
     box-shadow 0.3s ease;
 
   &.is-focused {
-    border-color: #007bff;
-    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.15);
+    border-color: var(--p-primary-color);
+    box-shadow: 0 0 12px var(--p-primary-color);
   }
 
   .typing-area {
@@ -241,16 +251,16 @@ function handleBlur() {
       white-space: pre-wrap;
 
       &.char-correct {
-        color: var(--color-text);
+        color: var(--p-text-primary);
       }
 
       &.char-incorrect {
-        color: #dc3545;
+        color: var(--p-text-error);
         font-weight: bold;
       }
 
       &.char-untyped {
-        color: var(--color-text);
+        color: var(--p-text-primary);
         opacity: 0.5;
       }
     }
@@ -259,23 +269,23 @@ function handleBlur() {
       display: inline-block;
       width: 3px;
       height: 1em;
-      background-color: #007bff;
+      background-color: var(--p-primary-color);
       margin-left: 1px;
       margin-right: 1px;
       vertical-align: middle;
-      animation: blink 0.8s step-end infinite;
+      animation: blink 1s infinite;
     }
+  }
+}
 
-    @keyframes blink {
-      0%,
-      100% {
-        opacity: 1;
-      }
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
 
-      50% {
-        opacity: 0;
-      }
-    }
+  50% {
+    opacity: 0;
   }
 }
 </style>

@@ -1,34 +1,25 @@
-:root {
-  --color-background: #f4f7f6;
-  --color-background-secondary: #fff;
-  --color-text: #333333;
-  --color-border: #eaeaea;
-  --color-hover: rgba(0, 0, 0, 0.05);
-  --color-focus: black;
-  --color-primary: #007bff;
-}
-
-:root.dark {
-  --color-background: #1a1a1a;
-  --color-background-secondary: #2a2a2a;
-  --color-text: #ffffff;
-  --color-border: #333333;
-  --color-hover: rgba(255, 255, 255, 0.05);
-  --color-focus: white;
-  --color-primary: #007bff;
-}
-
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+:root {
+  --p-surface-secondary: var(--p-surface-100);
+  --p-text-primary: var(--p-surface-950);
+  --p-text-secondary: var(--p-surface-900);
+  --p-text-error: var(--p-red-500);
+}
+
+:root.dark {
+  --p-surface-secondary: var(--p-surface-900);
+  --p-text-primary: var(--p-surface-50);
+  --p-text-secondary: var(--p-surface-100);
+  --p-text-error: var(--p-red-500);
+}
+
 body {
   font-family: 'Khmer OS Battambang', 'Moul', 'Arial', sans-serif;
-  background-color: var(--color-background);
-  color: var(--color-text);
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #app {

@@ -54,8 +54,8 @@ onBeforeUnmount(() => {
       @keydown="handleKeydown"
     >
       <div class="warning-content">
-        <span class="warning-icon">⚠️</span>
-        <p>Your keyboard is in English mode. Please switch to Khmer keyboard to type correctly.</p>
+        <span class="warning-icon"></span>
+        <p></p>
         <button
           class="dismiss-button"
           @click="dismiss"

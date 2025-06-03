@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import TypingTrainer from '@/components/TypingTrainer.vue'
 import GlobalFooter from '@/components/GlobalFooter.vue'
+import Toast from 'primevue/toast';
 </script>
 
 <template>
@@ -9,6 +10,7 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
     <TypingTrainer />
   </main>
   <GlobalFooter />
+  <Toast />
 </template>
 
 <style scoped>
