@@ -14,55 +14,6 @@ import TypingCompletion from '@/components/TypingCompletion.vue'
 const currentSentence = ref('រៀនវាយអក្សរខ្មែរ')
 const typedText = ref('')
 const cursorIndex = ref(0)
-const startTime = ref<number | null>(null)
-const endTime = ref<number | null>(null)
-
-const typingAreaRef = useTemplateRef('typingAreaRef')
-const isFocused = ref(false)
-
-const typingCompletionVisible = ref(false)
-const isComplete = computed(() => cursorIndex.value === currentSentence.value.length);
-watch(isComplete, (isCompleted) => {
-  typingCompletionVisible.value = isCompleted
-})
-
-const cpm = computed(() => {
-  if (!startTime.value || !endTime.value) return 0
-  const minutes = (endTime.value - startTime.value) / 60000
-  return Math.round(currentSentence.value.length / minutes)
-})
-
-const cps = computed(() => {
-  if (!startTime.value || !endTime.value) return 0
-  const seconds = (endTime.value - startTime.value) / 1000
-  return (currentSentence.value.length / seconds).toFixed(1)
-})
-
-const accuracy = computed(() => {
-  if (cursorIndex.value === 0) return 100
-  let correct = 0
-  for (let i = 0; i < cursorIndex.value; i++) {
-    if (currentSentence.value[i] === typedText.value[i]) correct++
-  }
-  return Math.round((correct / cursorIndex.value) * 100)
-})
-
-// Function to check if a character is English
-function isEnglishChar(char: string): boolean {
-  return /^[a-zA-Z]$/.test(char)
-}
-
-function focusTypingArea() {
-  if (typingAreaRef.value) typingAreaRef.value.focus()
-}
-
-function resetTyping() {
-  typedText.value = ''
-  cursorIndex.value = 0
-  startTime.value = null
-  endTime.value = null
-  nextTick(() => focusTypingArea())
-}
 
 /**
  * Find the index of the first incorrect character within the typed portion
@@ -110,12 +61,23 @@ const untypedSubstring = computed(() => {
   return currentSentence.value.substring(cursorIndex.value)
 })
 
+// ===============================
+// Handle Typing (Keydown)
+// ===============================
+
 const toast = useToast()
+
+const isFocused = ref(false)
+const startTime = ref<number | null>(null)
+const endTime = ref<number | null>(null)
+
 const handleKeydown = (event: KeyboardEvent) => {
+  if (!isFocused.value) return
+
   const key = event.key
 
   // Check for English input
-  if (key.length === 1 && isEnglishChar(key)) {
+  if (key.length === 1 && /^[a-zA-Z]$/.test(key)) {
     toast.removeAllGroups()
     toast.add({
       severity: 'info',
@@ -165,42 +127,68 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 }
 
-onMounted(() => {
-  // Listen for keydown events on the entire window
-  window.addEventListener('keydown', handleKeydown)
+const typingAreaRef = useTemplateRef('typingAreaRef')
+function focusTypingArea() {
+  if (typingAreaRef.value) typingAreaRef.value.focus()
+}
 
-  // Use nextTick to ensure the DOM element is available before trying to focus
-  nextTick(() => {
-    focusTypingArea() // Focus the typing area on mount
-  })
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+  nextTick(() => focusTypingArea())
 })
 
 onBeforeUnmount(() => {
-  // Clean up the keydown listener
   window.removeEventListener('keydown', handleKeydown)
 })
 
-function handleClickContainer() {
-  focusTypingArea()
-}
+// ===============================
+// Completion Modal
+// ===============================
 
-function handleFocus() {
-  isFocused.value = true
-}
+const typingCompletionVisible = ref(false)
+const isComplete = computed(() => cursorIndex.value === currentSentence.value.length);
+watch(isComplete, (isCompleted) => {
+  typingCompletionVisible.value = isCompleted
+})
 
-function handleBlur() {
-  isFocused.value = false
+const cpm = computed(() => {
+  if (!startTime.value || !endTime.value) return 0
+  const minutes = (endTime.value - startTime.value) / 60000
+  return Math.round(currentSentence.value.length / minutes)
+})
+
+const cps = computed(() => {
+  if (!startTime.value || !endTime.value) return 0
+  const seconds = (endTime.value - startTime.value) / 1000
+  return (currentSentence.value.length / seconds).toFixed(1)
+})
+
+const accuracy = computed(() => {
+  if (cursorIndex.value === 0) return 100
+  let correct = 0
+  for (let i = 0; i < cursorIndex.value; i++) {
+    if (currentSentence.value[i] === typedText.value[i]) correct++
+  }
+  return Math.round((correct / cursorIndex.value) * 100)
+})
+
+function resetTyping() {
+  typedText.value = ''
+  cursorIndex.value = 0
+  startTime.value = null
+  endTime.value = null
+  nextTick(() => focusTypingArea())
 }
 </script>
 
 <template>
-  <div class="typing-container" @click="handleClickContainer" :class="{ 'is-focused': isFocused }">
+  <div class="typing-container" @click="focusTypingArea" :class="{ 'is-focused': isFocused }">
     <div
       class="typing-area"
       tabindex="0"
       ref="typingAreaRef"
-      @focus="handleFocus"
-      @blur="handleBlur"
+      @focus="isFocused = true"
+      @blur="isFocused = false"
     >
       <span class="char-correct">{{ correctSubstring }}</span>
       <span class="char-incorrect">{{ incorrectSubstring }}</span>
@@ -225,10 +213,8 @@ function handleBlur() {
   border-radius: 12px;
   max-width: 1200px;
   width: 95%;
-  text-align: left;
   line-height: 2;
   cursor: text;
-  position: relative;
   transition:
     border-color 0.3s ease,
     box-shadow 0.3s ease;
@@ -239,16 +225,12 @@ function handleBlur() {
   }
 
   .typing-area {
-    min-height: 100px;
     outline: none;
-    padding: 15px;
     font-size: 2em;
-    direction: ltr;
-    word-wrap: break-word;
 
     span {
-      display: inline;
-      white-space: pre-wrap;
+      /* Creates "safe space" for descenders to render without clipping */
+      padding-bottom: 0.2em;
 
       &.char-correct {
         color: var(--p-text-primary);
