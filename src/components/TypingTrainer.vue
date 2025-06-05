@@ -9,9 +9,11 @@ import {
   watch,
 } from 'vue'
 import { useToast } from 'primevue/usetoast';
+import { useSentences } from '@/composables/useSentences'
 import TypingCompletion from '@/components/TypingCompletion.vue'
+import Button from 'primevue/button'
 
-const currentSentence = ref('រៀនវាយអក្សរខ្មែរ')
+const { currentSentence, setNextSentence } = useSentences()
 const typedText = ref('')
 const cursorIndex = ref(0)
 
@@ -177,6 +179,7 @@ function resetTyping() {
   cursorIndex.value = 0
   startTime.value = null
   endTime.value = null
+  setNextSentence()
   nextTick(() => focusTypingArea())
 }
 </script>
@@ -195,15 +198,25 @@ function resetTyping() {
       <span id="cursor" v-if="isFocused && !isComplete"></span>
       <span class="char-untyped">{{ untypedSubstring }}</span>
     </div>
-
-    <TypingCompletion
+  </div>
+  <div class="controls">
+    <Button
+      icon="pi pi-refresh"
+      @click="resetTyping"
+      :disabled="!isComplete && cursorIndex > 0"
+      severity="secondary"
+      variant="text"
+      aria-label="New sentence"
+      title="Get a new sentence"
+    />
+  </div>
+  <TypingCompletion
       v-model:visible="typingCompletionVisible"
       :cpm="cpm"
       :cps="cps"
       :accuracy="accuracy"
       @update:visible="resetTyping"
     />
-  </div>
 </template>
 
 <style scoped>
