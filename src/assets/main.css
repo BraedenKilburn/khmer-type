@@ -1,5 +1,16 @@
 @import 'primeicons/primeicons.css';
 
+/*
+ * Bundled, not assumed to be installed: a visitor with no Khmer font sees tofu
+ * otherwise.
+ *
+ * 700 is here because incorrect clusters render bold — see .cluster-incorrect
+ * in TypingTrainer.vue. Without a real bold face the browser synthesises one,
+ * which smears subscript consonants.
+ */
+@import '@fontsource/battambang/khmer-400.css';
+@import '@fontsource/battambang/khmer-700.css';
+
 * {
   margin: 0;
   padding: 0;
@@ -21,7 +32,18 @@
 }
 
 body {
-  font-family: 'Khmer OS Battambang', 'Moul', 'Arial', sans-serif;
+  font-family: 'Arial', sans-serif;
+}
+
+/*
+ * Battambang is scoped by language, not applied to body. The khmer-* subset
+ * files ship no unicode-range — only the combined index.css has one — so the
+ * face declares unbounded coverage and would claim the app's English chrome
+ * too (it carries a full Latin alphabet). :lang(km) is what keeps it on Khmer,
+ * which makes the lang attribute load-bearing rather than decorative.
+ */
+:lang(km) {
+  font-family: 'Battambang', 'Noto Sans Khmer', sans-serif;
 }
 
 a {

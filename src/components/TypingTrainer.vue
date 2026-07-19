@@ -177,6 +177,7 @@ function resetTyping() {
   <div class="typing-container" @click="focusTypingArea" :class="{ 'is-focused': isFocused }">
     <div
       class="typing-area"
+      lang="km"
       tabindex="0"
       ref="typingAreaRef"
       @focus="isFocused = true"
