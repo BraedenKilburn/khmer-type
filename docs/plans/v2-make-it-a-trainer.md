@@ -22,11 +22,24 @@
 
 ---
 
-## Task 1 — Hidden input and IME composition
+## Task 1 — Hidden input and IME composition ✅
 
-**Ticket:** [#14](https://github.com/BraedenKilburn/khmer-type/issues/14) · **File:** `src/components/TypingTrainer.vue:76-140`
+**Ticket:** [#14](https://github.com/BraedenKilburn/khmer-type/issues/14) — landed in `39742ae` · **File:** `src/components/TypingTrainer.vue`
 
 **Blocks:** Task 2 (sign strip), and transitively everything downstream of it
+
+**Shipped:** the input path is a visually-hidden `<input>` — `beforeinput` for direct
+entry, `compositionend` for composed sequences, `keydown` for Backspace. The state
+transitions live in `src/lib/typingSession.ts` as pure functions with tests, which is
+the seam Task 6 hooks. Composition is recognised by input type rather than by
+`isComposing`: WebKit fires `compositionend` before the final `beforeinput`, so the
+flag has cleared by the time the composed text arrives and the sequence would
+otherwise count twice.
+
+**Still unverified:** the IME path has not been exercised against a real Khmer input
+method in a browser — the event wiring is reasoned from spec, and the repo has no
+component-level test harness (no jsdom / `@vue/test-utils`). If Task 2 or Task 6 turn
+up keystrokes going missing or double-counted, start here.
 
 v1 deliberately shipped desktop-only. `window.addEventListener('keydown')` reads physical key events; IME composition emits `event.key === 'Process'` or `'Unidentified'`, so a user typing Khmer through a real input method registers nothing.
 
@@ -253,7 +266,7 @@ The two that matter most: `្ក` is recorded as one sign distinct from `ក` (
 ## Definition of done
 
 - [ ] A user who has never typed Khmer can start learning without leaving the app
-- [ ] IME composition works on desktop; small viewports say so
+- [x] IME composition works on desktop; small viewports say so — landed in `39742ae`, not yet confirmed against a real Khmer IME
 - [ ] Sign strip shows per-sign progress inside a multi-sign cluster, without splitting the typing line
 - [ ] On-screen keyboard highlights the next key, with COENG clearly explained
 - [ ] Heatmap shows per-sign accuracy *and* hesitation, persisted across sessions
