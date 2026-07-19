@@ -1,12 +1,17 @@
 import { ref, computed } from 'vue'
 import { corpus } from '@/data/corpus'
 
+/**
+ * Remove Zero Width Space (ZWSP) code points. They carry no keystroke, so a
+ * drill that contains them would be impossible to finish.
+ */
+export function stripZwsp(drill: string): string {
+  return drill.replace(/\u200B/g, '')
+}
+
 export function useDrills() {
   const currentIndex = ref(0)
-  const currentDrill = computed(() => {
-    // Remove Zero Width Space (ZWSP) character
-    return corpus[currentIndex.value].replace(/\u200B/g, '')
-  })
+  const currentDrill = computed(() => stripZwsp(corpus[currentIndex.value]))
 
   let usedIndices: number[] = []
   function setNextDrill() {
