@@ -10,6 +10,7 @@ import {
 } from 'vue'
 import { useToast } from 'primevue/usetoast';
 import { useDrills } from '@/composables/useDrills'
+import { toRenderClusters } from '@/lib/clusters'
 import TypingCompletion from '@/components/TypingCompletion.vue'
 import Button from 'primevue/button'
 
@@ -18,50 +19,20 @@ const typedText = ref('')
 const cursorIndex = ref(0)
 
 /**
- * Find the index of the first incorrect character within the typed portion
+ * One entry per cluster, never split — see docs/adr/0001-clusters-are-atomic.md
  */
-const firstErrorIndex = computed(() => {
-  // Iterate only up to the current cursor position
-  for (let i = 0; i < cursorIndex.value; i++) {
-    if (currentDrill.value[i] !== typedText.value[i]) return i
-  }
-  return -1
-})
+const renderClusters = computed(() =>
+  toRenderClusters(currentDrill.value, typedText.value, cursorIndex.value),
+)
 
 /**
- * The part of the drill that has been typed correctly
+ * The cursor sits before the first cluster it has not passed. A cluster the
+ * cursor is partway through is `active`, and the cursor renders before it
+ * rather than inside it — splitting it would shatter the glyph.
  */
-const correctSubstring = computed(() => {
-  const errorIdx = firstErrorIndex.value
-  if (errorIdx !== -1) {
-    // If there's an error, the correct part is the segment before the error
-    return currentDrill.value.substring(0, errorIdx)
-  } else {
-    // If no error, the correct part is the entire typed portion up to the cursor
-    return currentDrill.value.substring(0, cursorIndex.value)
-  }
-})
-
-/**
- * The part of the drill that has been typed incorrectly
- */
-const incorrectSubstring = computed(() => {
-  const errorIdx = firstErrorIndex.value
-  if (errorIdx !== -1) {
-    // If there's an error, the incorrect part is the segment from the error to the cursor
-    return currentDrill.value.substring(errorIdx, cursorIndex.value)
-  } else {
-    // If no error, the incorrect part is empty
-    return ''
-  }
-})
-
-/**
- * The remaining part of the drill that has not yet been typed
- */
-const untypedSubstring = computed(() => {
-  return currentDrill.value.substring(cursorIndex.value)
-})
+const cursorClusterIndex = computed(() =>
+  renderClusters.value.findIndex(({ state }) => state === 'active' || state === 'untyped'),
+)
 
 // ===============================
 // Handle Typing (Keydown)
@@ -194,10 +165,10 @@ function resetTyping() {
       @focus="isFocused = true"
       @blur="isFocused = false"
     >
-      <span class="char-correct">{{ correctSubstring }}</span>
-      <span class="char-incorrect">{{ incorrectSubstring }}</span>
-      <span id="cursor" v-if="isFocused && !isComplete"></span>
-      <span class="char-untyped">{{ untypedSubstring }}</span>
+      <template v-for="(cluster, index) in renderClusters" :key="index">
+        <span class="cursor" v-if="isFocused && !isComplete && index === cursorClusterIndex"></span>
+        <span :class="`cluster-${cluster.state}`">{{ cluster.text }}</span>
+      </template>
     </div>
   </div>
   <div class="controls">
@@ -243,26 +214,43 @@ function resetTyping() {
     font-size: 2em;
 
     span {
-      /* Creates "safe space" for descenders to render without clipping */
+      /*
+       * Creates "safe space" for descenders to render without clipping.
+       * Kept: subscript consonants still descend once clusters shape
+       * correctly, so this is a line-box concern the cluster fix doesn't
+       * touch. It also gives the active tint room to clear the descender.
+       */
       padding-bottom: 0.2em;
 
-      &.char-correct {
+      &.cluster-correct {
         color: var(--p-text-primary);
       }
 
-      &.char-incorrect {
+      &.cluster-incorrect {
         color: var(--p-text-error);
         font-weight: bold;
       }
 
-      &.char-untyped {
+      /*
+       * A cluster the cursor is partway through. Tint only — a colour change
+       * here would read as a judgement on a cluster that isn't finished yet,
+       * and the glyph must keep rendering normally.
+       */
+      &.cluster-active {
+        color: var(--p-text-primary);
+        background-color: color-mix(in srgb, var(--p-primary-color) 25%, transparent);
+        border-radius: 3px;
+      }
+
+      &.cluster-untyped {
         color: var(--p-text-primary);
         opacity: 0.5;
       }
     }
 
-    #cursor {
+    .cursor {
       display: inline-block;
+      padding-bottom: 0;
       width: 3px;
       height: 1em;
       background-color: var(--p-primary-color);
