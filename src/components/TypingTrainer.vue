@@ -11,12 +11,20 @@ import {
 import { useToast } from 'primevue/usetoast';
 import { useDrills } from '@/composables/useDrills'
 import { toRenderClusters } from '@/lib/clusters'
+import { accuracyFrom, tallyKeystrokes } from '@/lib/accuracy'
 import TypingCompletion from '@/components/TypingCompletion.vue'
 import Button from 'primevue/button'
 
 const { currentDrill, setNextDrill } = useDrills()
 const typedText = ref('')
 const cursorIndex = ref(0)
+
+/**
+ * Every key pressed at this drill, in order, Backspaces included. `typedText`
+ * cannot answer for accuracy: it holds the final state, in which a corrected
+ * typo has left no trace. The sequence remembers.
+ */
+const keystrokes = ref<string[]>([])
 
 /**
  * One entry per cluster, never split — see docs/adr/0001-clusters-are-atomic.md
@@ -78,6 +86,7 @@ const handleKeydown = (event: KeyboardEvent) => {
 
   // Handle Backspace
   if (key === 'Backspace') {
+    keystrokes.value.push(key)
     if (cursorIndex.value > 0) {
       cursorIndex.value--
       // Remove the last character from typedText state
@@ -90,6 +99,7 @@ const handleKeydown = (event: KeyboardEvent) => {
   // Check if it's a single character key (not a function key like 'Shift', 'ArrowUp', etc.)
   // and if we are not beyond the length of the current drill.
   if (key.length === 1 && cursorIndex.value < currentDrill.value.length) {
+    keystrokes.value.push(key)
     typedText.value += key
     cursorIndex.value++
 
@@ -137,18 +147,15 @@ const kps = computed(() => {
   return (currentDrill.value.length / seconds).toFixed(1)
 })
 
-const accuracy = computed(() => {
-  if (cursorIndex.value === 0) return 100
-  let correct = 0
-  for (let i = 0; i < cursorIndex.value; i++) {
-    if (currentDrill.value[i] === typedText.value[i]) correct++
-  }
-  return Math.round((correct / cursorIndex.value) * 100)
-})
+// Judged per keystroke, so a corrected typo still costs — see @/lib/accuracy
+const accuracy = computed(() =>
+  accuracyFrom(tallyKeystrokes(currentDrill.value, keystrokes.value)),
+)
 
 function resetTyping() {
   typedText.value = ''
   cursorIndex.value = 0
+  keystrokes.value = []
   startTime.value = null
   endTime.value = null
   setNextDrill()
