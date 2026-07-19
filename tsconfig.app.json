@@ -5,6 +5,10 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 
+    // ES2022.Intl on top of the @vue/tsconfig ES2020 baseline, for
+    // Intl.Segmenter (Chrome 87+, Safari 14.1+, Firefox 125+ — no polyfill).
+    "lib": ["ES2020", "ES2022.Intl", "DOM", "DOM.Iterable"],
+
     "paths": {
       "@/*": ["./src/*"]
     }
