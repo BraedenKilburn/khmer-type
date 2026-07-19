@@ -39,6 +39,18 @@ describe('toClusters', () => {
     expect(toClusters('ស្').join('')).toBe('ស្')
   })
 
+  it('does not let a stray COENG swallow a following space', () => {
+    expect(toClusters('ក្ ខ')).toEqual(['ក្', ' ', 'ខ'])
+  })
+
+  it('does not let a stray COENG swallow a following newline', () => {
+    expect(toClusters('ក្\nខ')).toEqual(['ក្', '\n', 'ខ'])
+  })
+
+  it('does not let a stray COENG swallow a following Latin letter', () => {
+    expect(toClusters('ក្a')).toEqual(['ក្', 'a'])
+  })
+
   it.each(corpus)('round-trips every drill in the corpus: %s', (drill) => {
     expect(toClusters(drill).join('')).toBe(drill)
   })

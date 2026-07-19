@@ -166,7 +166,7 @@ function resetTyping() {
       @blur="isFocused = false"
     >
       <template v-for="(cluster, index) in renderClusters" :key="index">
-        <span id="cursor" v-if="isFocused && !isComplete && index === cursorClusterIndex"></span>
+        <span class="cursor" v-if="isFocused && !isComplete && index === cursorClusterIndex"></span>
         <span :class="`cluster-${cluster.state}`">{{ cluster.text }}</span>
       </template>
     </div>
@@ -214,6 +214,14 @@ function resetTyping() {
     font-size: 2em;
 
     span {
+      /*
+       * Creates "safe space" for descenders to render without clipping.
+       * Kept: subscript consonants still descend once clusters shape
+       * correctly, so this is a line-box concern the cluster fix doesn't
+       * touch. It also gives the active tint room to clear the descender.
+       */
+      padding-bottom: 0.2em;
+
       &.cluster-correct {
         color: var(--p-text-primary);
       }
@@ -240,8 +248,9 @@ function resetTyping() {
       }
     }
 
-    #cursor {
+    .cursor {
       display: inline-block;
+      padding-bottom: 0;
       width: 3px;
       height: 1em;
       background-color: var(--p-primary-color);
