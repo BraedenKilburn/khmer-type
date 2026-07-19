@@ -3,8 +3,8 @@ import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 
 interface Props {
-  cpm: number
-  cps: number | string
+  kpm: number
+  kps: number | string
   accuracy: number
 }
 defineProps<Props>()
@@ -19,12 +19,12 @@ const visible = defineModel<boolean>(
   <Dialog v-model:visible="visible" header="Great job! 🎉" modal :closable="false">
     <div class="stats-grid">
       <div class="stat">
-        <span class="stat-label">CPM</span>
-        <span class="stat-value">{{ cpm }}</span>
+        <span class="stat-label">KPM</span>
+        <span class="stat-value">{{ kpm }}</span>
       </div>
       <div class="stat">
-        <span class="stat-label">CPS</span>
-        <span class="stat-value">{{ cps }}</span>
+        <span class="stat-label">KPS</span>
+        <span class="stat-value">{{ kps }}</span>
       </div>
       <div class="stat">
         <span class="stat-label">Accuracy</span>

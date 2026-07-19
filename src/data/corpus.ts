@@ -1,4 +1,4 @@
-export const khmerSentences: string[] = [
+export const corpus: string[] = [
   "សូមស្វាគមន៏!",
   "ប្រាកដហើយ!",
   "ច្បាស់ជាអញ្ចឹងហើយ!",

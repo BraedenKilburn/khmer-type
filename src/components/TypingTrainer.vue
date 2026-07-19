@@ -9,11 +9,11 @@ import {
   watch,
 } from 'vue'
 import { useToast } from 'primevue/usetoast';
-import { useSentences } from '@/composables/useSentences'
+import { useDrills } from '@/composables/useDrills'
 import TypingCompletion from '@/components/TypingCompletion.vue'
 import Button from 'primevue/button'
 
-const { currentSentence, setNextSentence } = useSentences()
+const { currentDrill, setNextDrill } = useDrills()
 const typedText = ref('')
 const cursorIndex = ref(0)
 
@@ -23,33 +23,33 @@ const cursorIndex = ref(0)
 const firstErrorIndex = computed(() => {
   // Iterate only up to the current cursor position
   for (let i = 0; i < cursorIndex.value; i++) {
-    if (currentSentence.value[i] !== typedText.value[i]) return i
+    if (currentDrill.value[i] !== typedText.value[i]) return i
   }
   return -1
 })
 
 /**
- * The part of the sentence that has been typed correctly
+ * The part of the drill that has been typed correctly
  */
 const correctSubstring = computed(() => {
   const errorIdx = firstErrorIndex.value
   if (errorIdx !== -1) {
     // If there's an error, the correct part is the segment before the error
-    return currentSentence.value.substring(0, errorIdx)
+    return currentDrill.value.substring(0, errorIdx)
   } else {
     // If no error, the correct part is the entire typed portion up to the cursor
-    return currentSentence.value.substring(0, cursorIndex.value)
+    return currentDrill.value.substring(0, cursorIndex.value)
   }
 })
 
 /**
- * The part of the sentence that has been typed incorrectly
+ * The part of the drill that has been typed incorrectly
  */
 const incorrectSubstring = computed(() => {
   const errorIdx = firstErrorIndex.value
   if (errorIdx !== -1) {
     // If there's an error, the incorrect part is the segment from the error to the cursor
-    return currentSentence.value.substring(errorIdx, cursorIndex.value)
+    return currentDrill.value.substring(errorIdx, cursorIndex.value)
   } else {
     // If no error, the incorrect part is empty
     return ''
@@ -57,10 +57,10 @@ const incorrectSubstring = computed(() => {
 })
 
 /**
- * The remaining part of the sentence that has not yet been typed
+ * The remaining part of the drill that has not yet been typed
  */
 const untypedSubstring = computed(() => {
-  return currentSentence.value.substring(cursorIndex.value)
+  return currentDrill.value.substring(cursorIndex.value)
 })
 
 // ===============================
@@ -117,13 +117,13 @@ const handleKeydown = (event: KeyboardEvent) => {
 
   // Handle standard character input
   // Check if it's a single character key (not a function key like 'Shift', 'ArrowUp', etc.)
-  // and if we are not beyond the length of the current sentence.
-  if (key.length === 1 && cursorIndex.value < currentSentence.value.length) {
+  // and if we are not beyond the length of the current drill.
+  if (key.length === 1 && cursorIndex.value < currentDrill.value.length) {
     typedText.value += key
     cursorIndex.value++
 
-    // Check if we've completed the sentence
-    if (cursorIndex.value === currentSentence.value.length) {
+    // Check if we've completed the drill
+    if (cursorIndex.value === currentDrill.value.length) {
       endTime.value = Date.now()
     }
   }
@@ -148,28 +148,29 @@ onBeforeUnmount(() => {
 // ===============================
 
 const typingCompletionVisible = ref(false)
-const isComplete = computed(() => cursorIndex.value === currentSentence.value.length);
+const isComplete = computed(() => cursorIndex.value === currentDrill.value.length);
 watch(isComplete, (isCompleted) => {
   typingCompletionVisible.value = isCompleted
 })
 
-const cpm = computed(() => {
+// Speed is measured in keystrokes, not clusters — see docs/adr/0002
+const kpm = computed(() => {
   if (!startTime.value || !endTime.value) return 0
   const minutes = (endTime.value - startTime.value) / 60000
-  return Math.round(currentSentence.value.length / minutes)
+  return Math.round(currentDrill.value.length / minutes)
 })
 
-const cps = computed(() => {
+const kps = computed(() => {
   if (!startTime.value || !endTime.value) return 0
   const seconds = (endTime.value - startTime.value) / 1000
-  return (currentSentence.value.length / seconds).toFixed(1)
+  return (currentDrill.value.length / seconds).toFixed(1)
 })
 
 const accuracy = computed(() => {
   if (cursorIndex.value === 0) return 100
   let correct = 0
   for (let i = 0; i < cursorIndex.value; i++) {
-    if (currentSentence.value[i] === typedText.value[i]) correct++
+    if (currentDrill.value[i] === typedText.value[i]) correct++
   }
   return Math.round((correct / cursorIndex.value) * 100)
 })
@@ -179,7 +180,7 @@ function resetTyping() {
   cursorIndex.value = 0
   startTime.value = null
   endTime.value = null
-  setNextSentence()
+  setNextDrill()
   nextTick(() => focusTypingArea())
 }
 </script>
@@ -206,14 +207,14 @@ function resetTyping() {
       :disabled="!isComplete && cursorIndex > 0"
       severity="secondary"
       variant="text"
-      aria-label="New sentence"
-      title="Get a new sentence"
+      aria-label="New drill"
+      title="Get a new drill"
     />
   </div>
   <TypingCompletion
       v-model:visible="typingCompletionVisible"
-      :cpm="cpm"
-      :cps="cps"
+      :kpm="kpm"
+      :kps="kps"
       :accuracy="accuracy"
       @update:visible="resetTyping"
     />

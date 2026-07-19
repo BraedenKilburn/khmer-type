@@ -1,22 +1,22 @@
 import { ref, computed } from 'vue'
-import { khmerSentences } from '@/data/khmerSentences'
+import { corpus } from '@/data/corpus'
 
-export function useSentences() {
+export function useDrills() {
   const currentIndex = ref(0)
-  const currentSentence = computed(() => {
+  const currentDrill = computed(() => {
     // Remove Zero Width Space (ZWSP) character
-    return khmerSentences[currentIndex.value].replace(/\u200B/g, '')
+    return corpus[currentIndex.value].replace(/\u200B/g, '')
   })
 
   let usedIndices: number[] = []
-  function setNextSentence() {
-    // If we've used all sentences, reset the used indices
-    if (usedIndices.length === khmerSentences.length) {
+  function setNextDrill() {
+    // If we've used all drills, reset the used indices
+    if (usedIndices.length === corpus.length) {
       usedIndices = []
     }
 
     // Get available indices (ones we haven't used yet)
-    const availableIndices = khmerSentences
+    const availableIndices = corpus
       .map((_, index: number) => index)
       .filter((index: number) => !usedIndices.includes(index))
 
@@ -30,7 +30,7 @@ export function useSentences() {
   }
 
   return {
-    currentSentence,
-    setNextSentence
+    currentDrill,
+    setNextDrill
   }
 }
