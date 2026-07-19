@@ -115,7 +115,7 @@ Progress within a cluster is communicated by the cursor position and the highlig
 
 Style `active` as a subtle background tint or underline (not a color change), so the glyph reads normally while marking it as in-flight.
 
-Recorded as [ADR-0001](../adr/0001-clusters-are-atomic.md). The missing intra-cluster feedback is a real gap, and the fix is the sign strip in [v2 Task 1](./v2-make-it-a-trainer.md#task-1--sign-decomposition-and-the-sign-strip) — feedback *beside* the typing line, never inside it. Don't attempt to close it here by colouring within a cluster; that reintroduces the exact bug v1 exists to fix.
+Recorded as [ADR-0001](../adr/0001-clusters-are-atomic.md). The missing intra-cluster feedback is a real gap, and the fix is the sign strip in [v2 Task 2](./v2-make-it-a-trainer.md#task-2--sign-decomposition-and-the-sign-strip) — feedback *beside* the typing line, never inside it. Don't attempt to close it here by colouring within a cluster; that reintroduces the exact bug v1 exists to fix.
 
 ### Extract the bucket logic as a pure function
 

@@ -6,6 +6,8 @@
 
 **Outcome:** someone who has never typed Khmer can sit down and start learning.
 
+**Tracked as:** [#14](https://github.com/BraedenKilburn/khmer-type/issues/14) – [#21](https://github.com/BraedenKilburn/khmer-type/issues/21). The tickets are authoritative on scope and acceptance; this document is the reasoning behind them.
+
 ---
 
 ## The gap
@@ -20,11 +22,39 @@
 
 ---
 
-## Task 1 — Sign decomposition and the sign strip
+## Task 1 — Hidden input and IME composition
 
-**New:** `src/components/SignStrip.vue`, `toSigns` in `src/composables/useDrills.ts`
+**Ticket:** [#14](https://github.com/BraedenKilburn/khmer-type/issues/14) · **File:** `src/components/TypingTrainer.vue:76-140`
 
-**Blocks:** Task 2 (keyboard), Task 4 (heatmap) — both consume `toSigns`
+**Blocks:** Task 2 (sign strip), and transitively everything downstream of it
+
+v1 deliberately shipped desktop-only. `window.addEventListener('keydown')` reads physical key events; IME composition emits `event.key === 'Process'` or `'Unidentified'`, so a user typing Khmer through a real input method registers nothing.
+
+Migrate to a visually-hidden `<input>` with:
+
+- `beforeinput` / `input` for character entry
+- `compositionstart` / `compositionupdate` / `compositionend` for IME sequences
+- Focus the hidden input on container click (already the interaction pattern at line 188)
+
+This also improves accessibility — a real focusable input with proper labelling beats a `tabindex="0"` div.
+
+### Why this goes first
+
+The per-sign stat capture in Task 6 hooks the same keystroke path. Rewriting the input layer afterwards means wiring that work twice. Make the change easy, then make the easy change.
+
+Everything the current path guarantees has to survive the move: one keystroke is one code point, Backspace rewinds the cursor without tallying, keystrokes past the end of the drill are refused, and the raw key sequence keeps feeding accuracy per [ADR-0002](../adr/0002-speed-counts-keystrokes.md).
+
+### Mobile is out of scope
+
+A typing trainer on a phone touch keyboard teaches a different, arguably useless motor skill. **Decided:** fix IME for desktop, show a "best on desktop" notice on small viewports, and build no mobile-optimized experience.
+
+---
+
+## Task 2 — Sign decomposition and the sign strip
+
+**Ticket:** [#18](https://github.com/BraedenKilburn/khmer-type/issues/18) · **New:** `src/components/SignStrip.vue`, `toSigns` in `src/composables/useDrills.ts`
+
+**Blocked by:** Task 1 · **Blocks:** Task 4 (keyboard), Task 6 (stats) — both consume `toSigns`
 
 The answer to v1's deliberate lack of intra-cluster feedback ([ADR-0001](../adr/0001-clusters-are-atomic.md)). When the cursor sits inside a multi-sign cluster, render that cluster decomposed beneath the typing line:
 
@@ -54,7 +84,7 @@ Walk code points; COENG plus the following consonant is one sign, everything els
 
 Prefix combining signs with a dotted circle (U+25CC) for display so they're legible standing alone.
 
-**This function is why the task goes first.** The keyboard needs it to know which sign is next; the heatmap needs it to record `្ក` separately from `ក`. Build it once in `useDrills`, with tests, and have both consume it — a second copy will drift.
+**This function is why the task comes before the keyboard and the heatmap.** The keyboard needs it to know which sign is next; the heatmap needs it to record `្ក` separately from `ក`. Build it once in `useDrills`, with tests, and have both consume it — a second copy will drift.
 
 ### Behavior
 
@@ -69,19 +99,15 @@ Prefix combining signs with a dotted circle (U+25CC) for display so they're legi
 
 ### Ships alone
 
-The strip is useful on its own — a user with a working Khmer layout gets per-sign feedback with no keyboard on screen. Land and evaluate it before starting Task 2.
+The strip is useful on its own — a user with a working Khmer layout gets per-sign feedback with no keyboard on screen. Land and evaluate it before starting Task 4.
 
 ---
 
-## Task 2 — On-screen Khmer keyboard
+## Task 3 — Khmer layout data
 
-**New:** `src/components/KhmerKeyboard.vue`, `src/data/khmerLayout.ts`
+**Ticket:** [#15](https://github.com/BraedenKilburn/khmer-type/issues/15) · **New:** `src/data/khmerLayout.ts`
 
-**Blocked by:** Task 1 (`toSigns`) · **Blocks:** Task 3
-
-A visual keyboard beneath the typing area that highlights the next key to press. Where the strip shows *which sign*, the keyboard shows *which key* — the same guidance one altitude down.
-
-### Layout data
+**Blocks:** Task 4 · **Blocked by:** nothing — can run in parallel with Tasks 1–2
 
 Encode the standard Khmer (NiDA) layout — the default on macOS, Windows, and Linux. Map physical key positions to the Khmer characters they produce, unshifted and shifted:
 
@@ -99,6 +125,18 @@ Key on `event.code`, not `event.key`. `code` is the physical position and stays 
 
 **Verify the mapping against a real Khmer keyboard rather than trusting a chart; NiDA has several near-variants.** This is a research task with a real chance of being wrong in ways that are hard to notice — a good candidate for `/research` against primary sources before encoding anything.
 
+Split out from the keyboard component because the research is the expensive half and the data is independently verifiable: every code point in the corpus must be producible from the layout. If a drill contains a sign no key produces, the layout is wrong or incomplete.
+
+---
+
+## Task 4 — On-screen Khmer keyboard
+
+**Ticket:** [#19](https://github.com/BraedenKilburn/khmer-type/issues/19) · **New:** `src/components/KhmerKeyboard.vue`
+
+**Blocked by:** Task 2 (`toSigns`), Task 3 (layout data)
+
+A visual keyboard beneath the typing area that highlights the next key to press. Where the strip shows *which sign*, the keyboard shows *which key* — the same guidance one altitude down.
+
 ### Behavior
 
 - Highlight the key producing the next expected character
@@ -106,37 +144,33 @@ Key on `event.code`, not `event.key`. `code` is the physical position and stays 
 - **COENG needs special handling.** U+17D2 is invisible — it has a key position but produces no visible glyph. Label that key explicitly (e.g. `◌្` with a dotted circle) so learners understand they're pressing "stack the next consonant," not a character. This is the single most confusing key on the layout for beginners and deserves its own affordance.
 - Toggleable, persisted — experienced users will want it off
 
----
+### The keyboard is a guide, never an input device
 
-## Task 3 — Wrong-layout fallback and click-to-type
+**Decided:** keys are not clickable and produce no text.
 
-**File:** `src/components/TypingTrainer.vue:82-91`
-
-**Blocked by:** Task 2 (click-to-type needs the on-screen keyboard)
-
-Replace the dead-end toast with something actionable: when Latin input is detected, surface a short inline panel explaining how to add the Khmer keyboard on macOS / Windows / Linux, and offer a **click-to-type** mode using the on-screen keyboard so the user can start immediately without configuring anything.
-
-### Open question — do clicks count as keystrokes?
-
-Click-to-type produces the same characters through a different motor action. Before building it, decide:
-
-- Do clicked characters feed `tallyKeystrokes` and affect accuracy?
-- Do they feed per-sign stats in Task 4, given that clicking teaches nothing about key location?
-- Does a session typed entirely by clicking belong in speed history at all?
-
-**Recommendation: clicks produce text but are excluded from all measurement** — the mode exists to unblock someone who hasn't configured a layout, not to record their performance. But this is genuinely unsettled and worth grilling before it gets built in.
+An earlier draft of this plan proposed a click-to-type mode, on the theory that it would unblock a user who hasn't configured a Khmer layout. It's cut. Clicking a key teaches nothing about key location, which is the entire skill being trained, and it forces an unanswerable question about whether clicked characters feed accuracy, per-sign stats, and speed history. Every answer is bad: count them and the heatmap is poisoned by a different motor action; exclude them and the mode is a toy that silently records nothing. Task 5 unblocks the unconfigured user instead, by teaching them to configure their layout.
 
 ---
 
-## Task 4 — Per-sign accuracy heatmap
+## Task 5 — Wrong-layout fallback
 
-**New:** `src/composables/useStats.ts`, `src/components/StatsHeatmap.vue`
+**Ticket:** [#16](https://github.com/BraedenKilburn/khmer-type/issues/16) · **File:** `src/components/TypingTrainer.vue:82-91`
 
-**Blocked by:** Task 1 (`toSigns`)
+**Blocked by:** nothing — can start immediately
+
+Replace the dead-end toast with something actionable: when Latin input is detected, surface a short inline panel explaining how to add the Khmer keyboard on macOS / Windows / Linux, so the user can follow it, switch layouts, and start typing without leaving the app.
+
+A panel that persists while the problem does, rather than a toast that expires in three seconds and takes the instructions with it.
+
+---
+
+## Task 6 — Per-sign stat capture
+
+**Ticket:** [#20](https://github.com/BraedenKilburn/khmer-type/issues/20) · **New:** `src/composables/useStats.ts`
+
+**Blocked by:** Task 2 (`toSigns`) · **Blocks:** Task 7
 
 Nothing on the internet tells a Khmer learner *which specific signs they fumble*. You'd be first.
-
-### Tracking
 
 On each keystroke, record `(expectedSign, wasCorrect, msSinceLastKeystroke)`. Aggregate per sign:
 
@@ -151,22 +185,36 @@ interface CharStat {
 
 Persist to `localStorage` via `@vueuse/core`'s `useStorage` (already a dependency). Version the storage key (`khmer-type:stats:v1`) so the shape can migrate later.
 
-### Display
-
-Render the 33 consonants in their traditional order, each tinted by error rate. Two views worth having:
-
-- **Accuracy** — error rate per character
-- **Hesitation** — average latency, which surfaces characters you get *right* but slowly. Often the more useful signal, and nobody visualizes it.
-
 Include subscript forms as distinct entries — typing `្ក` is a different motor skill from typing `ក`, and conflating them hides exactly the weakness a learner most needs to see.
+
+Ends at a plain list of weakest signs on the completion dialog. That's enough to prove the pipeline end to end and to sanity-check the numbers before any of it gets tinted and charted.
+
+**The sign-level aggregation is the part most likely to go quietly wrong** — a bug there produces a heatmap that looks plausible and is simply false. Test aggregation, subscript-vs-base separation, and the `localStorage` round-trip.
+
+---
+
+## Task 7 — Accuracy and hesitation heatmap
+
+**Ticket:** [#21](https://github.com/BraedenKilburn/khmer-type/issues/21) · **New:** `src/components/StatsHeatmap.vue`
+
+**Blocked by:** Task 6
+
+Render the 33 consonants in their traditional order, plus subscript forms, each tinted by performance. Two views worth having:
+
+- **Accuracy** — error rate per sign
+- **Hesitation** — average latency, which surfaces signs you get *right* but slowly. Often the more useful signal, and nobody visualizes it.
+
+A sign with no attempts must read as unattempted, not as perfect — otherwise the heatmap congratulates a learner on every sign they've been avoiding.
 
 > Consult `dataviz` skill guidance before building the heatmap.
 
 ---
 
-## Task 5 — Romanization and gloss
+## Task 8 — Romanization and gloss
 
-**File:** `src/data/corpus.ts` (schema change), new toggle in `TypingTrainer.vue`
+**Ticket:** [#17](https://github.com/BraedenKilburn/khmer-type/issues/17) · **File:** `src/data/corpus.ts` (schema change), new toggle in `TypingTrainer.vue`
+
+**Blocked by:** nothing — independent of the trainer work above
 
 Currently the corpus is a bare `string[]`. A learner types 308 sentences of meaningless glyphs and learns nothing but muscle memory.
 
@@ -184,50 +232,30 @@ export interface Drill {
 
 Display both below the typing area, each independently toggleable and persisted. Beginners want all three lines; advanced users want Khmer only.
 
-**Effort warning — this is the expensive task in v2.** 308 sentences × 2 fields, and machine translation of Khmer is unreliable enough that it needs human review. Two mitigations:
+### Scope: schema and toggles only
 
-1. Ship the schema change with `romanization`/`en` optional, populate incrementally, hide the toggle when a field is absent
-2. Start with the ~50 most common sentences rather than all 308
+**The 308-sentence content pass is not in v2 and is not tracked.** 308 sentences × 2 fields, and machine translation of Khmer is unreliable enough that it needs human review — an agent filling it unsupervised produces plausible-looking wrong data, which is worse than an empty field.
+
+So the ticket ships the schema with `romanization`/`en` optional, populates a handful of drills as proof the display works, and hides a toggle's line when its field is absent. Content gets populated incrementally, out of band, whenever someone with the language is willing to sit down and do it.
 
 Khmer romanization has no single universal standard (UNGEGN vs. ALA-LC vs. ad-hoc phonetic). Pick one, note the choice in the README, and stay consistent.
 
 ---
 
-## Task 6 — IME and mobile input
+## Tests
 
-**File:** `src/components/TypingTrainer.vue:76-140`
+Vitest, the segmentation tests, and the accuracy tests all landed in v1. v2's new logic is covered inside the ticket that introduces it rather than in a trailing test task — sign extraction in Task 2, layout completeness in Task 3, stat aggregation and the `localStorage` round-trip in Task 6.
 
-v1 deliberately shipped desktop-only. `window.addEventListener('keydown')` reads physical key events; mobile keyboards and IME composition emit `event.key === 'Process'` or `'Unidentified'`, so nothing registers.
-
-Migrate to a visually-hidden `<input>` with:
-
-- `beforeinput` / `input` for character entry
-- `compositionstart` / `compositionupdate` / `compositionend` for IME sequences
-- Focus the hidden input on container click (already the interaction pattern at line 188)
-
-This also improves accessibility — a real focusable input with proper labelling beats a `tabindex="0"` div.
-
-Decide deliberately whether mobile is in scope at all. A typing trainer on a phone touch keyboard teaches a different (arguably useless) motor skill. **Recommendation: fix IME for desktop, and show a "best on desktop" notice on small viewports** rather than building a mobile-optimized experience.
-
----
-
-## Task 7 — Tests
-
-Vitest, the segmentation tests, and the accuracy tests all landed in v1. Extend the existing suite to cover v2's new logic:
-
-- Stats aggregation per sign, and the `localStorage` round-trip
-- Sign extraction: `្ក` is recorded as one sign distinct from `ក` (see [`CONTEXT.md`](../../CONTEXT.md))
-
-The sign-level aggregation is the part most likely to go quietly wrong — a bug there produces a heatmap that looks plausible and is simply false.
+The two that matter most: `្ក` is recorded as one sign distinct from `ក` (see [`CONTEXT.md`](../../CONTEXT.md)), and the per-sign aggregation is right.
 
 ---
 
 ## Definition of done
 
 - [ ] A user who has never typed Khmer can start learning without leaving the app
-- [ ] On-screen keyboard highlights the next key, with COENG clearly explained
+- [ ] IME composition works on desktop; small viewports say so
 - [ ] Sign strip shows per-sign progress inside a multi-sign cluster, without splitting the typing line
+- [ ] On-screen keyboard highlights the next key, with COENG clearly explained
 - [ ] Heatmap shows per-sign accuracy *and* hesitation, persisted across sessions
-- [ ] Romanization/gloss toggles work for at least the top 50 sentences
-- [ ] IME composition works on desktop
+- [ ] Romanization and gloss toggles work, and stay hidden for drills that lack the field
 - [ ] Test suite extended to cover per-sign stats and their persistence

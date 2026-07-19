@@ -4,7 +4,7 @@ Browsers cannot shape a ligature across element boundaries, so splitting a clust
 
 ## Scope of the constraint
 
-This binds **a single shaped run**, not the page. Rendering the same cluster a second time, decomposed into its signs, is unconstrained: each sign becomes its own run with no ligature to break. Intra-cluster progress is therefore *not* representable inline, but *is* representable out of line — see the sign strip in [v2 Task 1](../plans/v2-make-it-a-trainer.md#task-1--sign-decomposition-and-the-sign-strip).
+This binds **a single shaped run**, not the page. Rendering the same cluster a second time, decomposed into its signs, is unconstrained: each sign becomes its own run with no ligature to break. Intra-cluster progress is therefore *not* representable inline, but *is* representable out of line — see the sign strip in [v2 Task 2](../plans/v2-make-it-a-trainer.md#task-2--sign-decomposition-and-the-sign-strip).
 
 ## Consequences
 
