@@ -1,30 +1,25 @@
 <script setup lang="ts">
-import {
-  ref,
-  onMounted,
-  onBeforeUnmount,
-  nextTick,
-  computed,
-  useTemplateRef,
-  watch,
-} from 'vue'
+import { ref, onMounted, nextTick, computed, useTemplateRef, watch } from 'vue'
 import { useToast } from 'primevue/usetoast';
 import { useDrills } from '@/composables/useDrills'
 import { toRenderClusters } from '@/lib/clusters'
 import { accuracyFrom, tallyKeystrokes } from '@/lib/accuracy'
+import {
+  commitText,
+  emptySession,
+  rewind,
+  withoutLatinLetters,
+  type TypingSession,
+} from '@/lib/typingSession'
 import TypingCompletion from '@/components/TypingCompletion.vue'
 import Button from 'primevue/button'
 
 const { currentDrill, setNextDrill } = useDrills()
-const typedText = ref('')
-const cursorIndex = ref(0)
 
-/**
- * Every key pressed at this drill, in order, Backspaces included. `typedText`
- * cannot answer for accuracy: it holds the final state, in which a corrected
- * typo has left no trace. The sequence remembers.
- */
-const keystrokes = ref<string[]>([])
+/** Typed text, cursor, and the raw key sequence — see `@/lib/typingSession`. */
+const session = ref<TypingSession>(emptySession)
+const typedText = computed(() => session.value.typedText)
+const cursorIndex = computed(() => session.value.cursorIndex)
 
 /**
  * One entry per cluster, never split — see docs/adr/0001-clusters-are-atomic.md
@@ -43,7 +38,7 @@ const cursorClusterIndex = computed(() =>
 )
 
 // ===============================
-// Handle Typing (Keydown)
+// Handle Typing (hidden input)
 // ===============================
 
 const toast = useToast()
@@ -52,76 +47,131 @@ const isFocused = ref(false)
 const startTime = ref<number | null>(null)
 const endTime = ref<number | null>(null)
 
-const handleKeydown = (event: KeyboardEvent) => {
-  if (!isFocused.value) return
+const isComplete = computed(() => cursorIndex.value === currentDrill.value.length)
 
-  const key = event.key
+/**
+ * The input the user actually types into: a real, labelled, focusable control
+ * rather than a `tabindex="0"` div. It is kept empty — every commit is folded
+ * into `session` and the value reset — so the browser never renders text of
+ * its own over the drill.
+ */
+const keyboardInputRef = useTemplateRef<HTMLInputElement>('keyboardInputRef')
+function focusTypingArea() {
+  keyboardInputRef.value?.focus()
+}
 
-  // Check for English input
-  if (key.length === 1 && /^[a-zA-Z]$/.test(key)) {
-    toast.removeAllGroups()
-    toast.add({
-      severity: 'info',
-      summary: 'Unexpected English Input',
-      detail: 'Please switch to Khmer input mode to type correctly.',
-      life: 3000,
-    })
+/** True between `compositionstart` and `compositionend`. */
+const isComposing = ref(false)
+
+function warnWrongLayout() {
+  toast.removeAllGroups()
+  toast.add({
+    severity: 'info',
+    summary: 'Unexpected English Input',
+    detail: 'Please switch to Khmer input mode to type correctly.',
+    life: 3000,
+  })
+}
+
+/**
+ * Fold committed text into the session — one code point from a keypress, a
+ * whole sequence from an IME. Timing starts at the first keystroke that lands,
+ * not at the first key that was refused.
+ */
+function commit(text: string) {
+  if (!text || isComplete.value) return
+
+  const khmer = withoutLatinLetters(text)
+  if (khmer !== text) warnWrongLayout()
+  if (!khmer) return
+
+  startTime.value ??= Date.now()
+  session.value = commitText(session.value, currentDrill.value, khmer)
+  if (isComplete.value) endTime.value = Date.now()
+}
+
+/**
+ * Backspace is handled here rather than through `beforeinput`: the input is
+ * always empty, so there is nothing for the browser to delete and no
+ * `deleteContentBackward` to listen for. Preventing the default also stops the
+ * key navigating the page back.
+ *
+ * While an IME is composing, Backspace belongs to the composition buffer — the
+ * user is editing a sequence they have not committed yet, and rewinding the
+ * drill underneath them would desync the two.
+ */
+function handleKeydown(event: KeyboardEvent) {
+  if (event.isComposing || isComposing.value) return
+
+  if (event.key === 'Backspace') {
+    event.preventDefault()
+    session.value = rewind(session.value)
     return
   }
 
-  // Start timing on first keystroke
-  if (!startTime.value && key.length === 1) {
-    startTime.value = Date.now()
-  }
-
-  // Prevent default behavior for common keys in a typing test context
-  // that might interfere (like space scrolling, backspace navigating)
-  // Check for specific keys or single character keys while avoiding modifiers (Ctrl, Alt, Meta)
-  if (
-    [' ', 'Backspace', 'Enter'].includes(key) ||
-    (key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey)
-  ) {
-    event.preventDefault()
-  }
-
-  // Handle Backspace
-  if (key === 'Backspace') {
-    keystrokes.value.push(key)
-    if (cursorIndex.value > 0) {
-      cursorIndex.value--
-      // Remove the last character from typedText state
-      typedText.value = typedText.value.slice(0, -1)
-    }
-    return // Stop processing after handling backspace
-  }
-
-  // Handle standard character input
-  // Check if it's a single character key (not a function key like 'Shift', 'ArrowUp', etc.)
-  // and if we are not beyond the length of the current drill.
-  if (key.length === 1 && cursorIndex.value < currentDrill.value.length) {
-    keystrokes.value.push(key)
-    typedText.value += key
-    cursorIndex.value++
-
-    // Check if we've completed the drill
-    if (cursorIndex.value === currentDrill.value.length) {
-      endTime.value = Date.now()
-    }
-  }
+  // Enter would submit an ancestor form. Space is left alone: a focused input
+  // swallows it rather than scrolling the page, and preventing the default
+  // here would suppress the `beforeinput` that carries the space into a drill.
+  if (event.key === 'Enter') event.preventDefault()
 }
 
-const typingAreaRef = useTemplateRef('typingAreaRef')
-function focusTypingArea() {
-  if (typingAreaRef.value) typingAreaRef.value.focus()
+/**
+ * Composition commits at `compositionend`, never here — recognised by input
+ * type rather than by `isComposing`, which is not reliable at the boundary.
+ * WebKit fires `compositionend` before the final `beforeinput`, so the flag has
+ * already cleared by the time the composed text arrives and the sequence would
+ * be counted a second time.
+ */
+const COMPOSITION_INPUT_TYPES = ['insertCompositionText', 'insertFromComposition']
+
+/**
+ * Direct entry. Prevented so the input's value stays empty, which is what keeps
+ * the browser from rendering its own text over the drill.
+ *
+ * Paste is refused: a drill filled in wholesale is not a typing run, and
+ * counting it as keystrokes would report a speed nobody typed.
+ */
+function handleBeforeInput(payload: Event) {
+  // Vue types every `beforeinput` listener as `Event`; the DOM only ever
+  // dispatches `InputEvent` here.
+  const event = payload as InputEvent
+  if (event.isComposing || COMPOSITION_INPUT_TYPES.includes(event.inputType)) return
+
+  event.preventDefault()
+
+  if (event.inputType.startsWith('insertFrom')) return
+  if (event.inputType.startsWith('insert')) commit(event.data ?? '')
+}
+
+function handleCompositionStart() {
+  isComposing.value = true
+}
+
+/**
+ * The input has to stay empty or the browser renders its own text over the
+ * drill. Direct entry is already prevented, so anything that reaches here is
+ * composed text the browser inserted on its own — including, on WebKit, a
+ * composition that arrives after `compositionend` has run its clear.
+ */
+function handleInput() {
+  if (isComposing.value) return
+  if (keyboardInputRef.value?.value) keyboardInputRef.value.value = ''
+}
+
+/**
+ * The composed sequence lands as one commit and is split back into its
+ * keystrokes — `ស្វា` is four of them however the IME delivered it, per
+ * docs/adr/0002-speed-counts-keystrokes.md. The in-flight buffer was written
+ * into the input's value (composition cannot be prevented), so clear it.
+ */
+function handleCompositionEnd(event: CompositionEvent) {
+  isComposing.value = false
+  commit(event.data)
+  if (keyboardInputRef.value) keyboardInputRef.value.value = ''
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeydown)
   nextTick(() => focusTypingArea())
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleKeydown)
 })
 
 // ===============================
@@ -129,7 +179,6 @@ onBeforeUnmount(() => {
 // ===============================
 
 const typingCompletionVisible = ref(false)
-const isComplete = computed(() => cursorIndex.value === currentDrill.value.length);
 watch(isComplete, (isCompleted) => {
   typingCompletionVisible.value = isCompleted
 })
@@ -149,7 +198,7 @@ const kps = computed(() => {
 
 // Judged per keystroke, so a corrected typo still costs — see @/lib/accuracy
 const accuracy = computed(() =>
-  accuracyFrom(tallyKeystrokes(currentDrill.value, keystrokes.value)),
+  accuracyFrom(tallyKeystrokes(currentDrill.value, session.value.keystrokes)),
 )
 
 /**
@@ -163,9 +212,7 @@ function handleRestart() {
 }
 
 function resetTyping() {
-  typedText.value = ''
-  cursorIndex.value = 0
-  keystrokes.value = []
+  session.value = emptySession
   startTime.value = null
   endTime.value = null
   setNextDrill()
@@ -174,15 +221,28 @@ function resetTyping() {
 </script>
 
 <template>
+  <p class="desktop-notice">Khmer Type is best on a desktop with a Khmer keyboard layout.</p>
   <div class="typing-container" @click="focusTypingArea" :class="{ 'is-focused': isFocused }">
-    <div
-      class="typing-area"
+    <input
+      class="keyboard-input"
+      ref="keyboardInputRef"
       lang="km"
-      tabindex="0"
-      ref="typingAreaRef"
+      type="text"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+      aria-label="Khmer typing drill"
+      aria-describedby="drill-text"
       @focus="isFocused = true"
       @blur="isFocused = false"
-    >
+      @keydown="handleKeydown"
+      @beforeinput="handleBeforeInput"
+      @input="handleInput"
+      @compositionstart="handleCompositionStart"
+      @compositionend="handleCompositionEnd"
+    />
+    <div class="typing-area" id="drill-text" lang="km">
       <template v-for="(cluster, index) in renderClusters" :key="index">
         <span class="cursor" v-if="isFocused && !isComplete && index === cursorClusterIndex"></span>
         <span :class="`cluster-${cluster.state}`">{{ cluster.text }}</span>
@@ -210,7 +270,31 @@ function resetTyping() {
 </template>
 
 <style scoped>
+/*
+ * A touch keyboard trains a different motor skill, so there is no mobile
+ * experience to offer — just say so. Deliberately out of scope; see
+ * docs/plans/v2-make-it-a-trainer.md.
+ */
+.desktop-notice {
+  display: none;
+  max-width: 1200px;
+  width: 95%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background-color: var(--p-surface-secondary);
+  color: var(--p-text-secondary);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .desktop-notice {
+    display: block;
+  }
+}
+
 .typing-container {
+  position: relative;
   padding: 30px;
   background-color: var(--p-surface-secondary);
   border-radius: 12px;
@@ -225,6 +309,32 @@ function resetTyping() {
   &.is-focused {
     border-color: var(--p-primary-color);
     box-shadow: 0 0 12px var(--p-primary-color);
+  }
+
+  /*
+   * Hidden from sight, not from the accessibility tree or the keyboard: this
+   * is the real focus target, so it must stay rendered and focusable. It sits
+   * at the container's top-left rather than off-screen, because focusing an
+   * off-screen control scrolls the page to it.
+   */
+  .keyboard-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: transparent;
+    caret-color: transparent;
+    /*
+     * The IME's in-flight composition renders in the input itself, and there
+     * is nowhere sensible to show it — the drill occupies that space. One
+     * code point wide is enough for the candidate window to anchor to.
+     */
+    font-size: 1px;
   }
 
   .typing-area {

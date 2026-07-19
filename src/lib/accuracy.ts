@@ -9,8 +9,8 @@
  * keystroke is one code point, and a stacked cluster is several of them.
  */
 
-/** Correction, not an attempt — it moves the cursor and tallies nothing. */
-const BACKSPACE = 'Backspace'
+/** The sequence read here is the one `@/lib/typingSession` writes. */
+import { BACKSPACE } from '@/lib/typingSession'
 
 export interface KeystrokeTally {
   /** Keystrokes attempted. Backspace produces no code point and is not one. */
