@@ -9,6 +9,14 @@ interface Props {
 }
 defineProps<Props>()
 
+/**
+ * Restarting is a thing the user asked for, not a consequence of this dialog
+ * closing. The button is the only way out today (`:closable="false"` means no
+ * close icon and no Escape), so should a dismissal path ever be added, it will
+ * leave the drill alone rather than silently skipping to a new one.
+ */
+defineEmits<{ restart: [] }>()
+
 const visible = defineModel<boolean>(
   'visible',
   { required: true },
@@ -32,7 +40,7 @@ const visible = defineModel<boolean>(
       </div>
     </div>
     <div class="footer">
-      <Button @click="visible = false">Try Again</Button>
+      <Button @click="$emit('restart')">Try Again</Button>
     </div>
   </Dialog>
 </template>

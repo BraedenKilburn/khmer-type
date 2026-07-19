@@ -152,6 +152,16 @@ const accuracy = computed(() =>
   accuracyFrom(tallyKeystrokes(currentDrill.value, keystrokes.value)),
 )
 
+/**
+ * The dialog stays on screen through its leave transition, so "Try Again" can
+ * be clicked twice. Only the click that dismissed it counts — otherwise the
+ * second one advances past a drill the user never saw.
+ */
+function handleRestart() {
+  if (!typingCompletionVisible.value) return
+  resetTyping()
+}
+
 function resetTyping() {
   typedText.value = ''
   cursorIndex.value = 0
@@ -194,7 +204,7 @@ function resetTyping() {
       :kpm="kpm"
       :kps="kps"
       :accuracy="accuracy"
-      @update:visible="resetTyping"
+      @restart="handleRestart"
     />
 </template>
 
