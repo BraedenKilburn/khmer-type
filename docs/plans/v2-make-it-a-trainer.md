@@ -116,13 +116,26 @@ The strip is useful on its own — a user with a working Khmer layout gets per-s
 
 ---
 
-## Task 3 — Khmer layout data
+## Task 3 — Khmer layout data ✅
 
 **Ticket:** [#15](https://github.com/BraedenKilburn/khmer-type/issues/15) · **New:** `src/data/khmerLayout.ts`
 
 **Blocks:** Task 4 · **Blocked by:** nothing — can run in parallel with Tasks 1–2
 
-Encode the standard Khmer (NiDA) layout — the default on macOS, Windows, and Linux. Map physical key positions to the Khmer characters they produce, unshifted and shifted:
+**Shipped:** NiDA encoded and verified by diffing two independent implementations
+(Windows `KBDKNI`, Linux `xkb kh(basic)`), which agree on `base` and `shift` for
+all 48 keys. `keystrokeFor` indexes characters back to the key that produces
+them; a test asserts every code point in the corpus is reachable.
+
+**Two corrections to what this task assumed.** NiDA is *not* the default on
+macOS — Apple ships a near-variant under the name "Khmer" that differs on 10 of
+48 keys, including the spacebar. That is now [ADR-0003](../adr/0003-two-layout-variants-user-overridable.md):
+both tables ship, detection is inferred from keystrokes, and the user can
+override. And `KeyDef` needs an `alt` level: NiDA puts four code points the
+corpus uses (`,` `ឯ` `ឱ` `៎`) on AltGr, so base and shift alone cannot satisfy
+the completeness test.
+
+Encode the standard Khmer (NiDA) layout. Map physical key positions to the Khmer characters they produce, unshifted and shifted:
 
 ```ts
 export interface KeyDef {
@@ -156,6 +169,10 @@ A visual keyboard beneath the typing area that highlights the next key to press.
 - Show a distinct Shift indicator when the target is a shifted glyph
 - **COENG needs special handling.** U+17D2 is invisible — it has a key position but produces no visible glyph. Label that key explicitly (e.g. `◌្` with a dotted circle) so learners understand they're pressing "stack the next consonant," not a character. This is the single most confusing key on the layout for beginners and deserves its own affordance.
 - Toggleable, persisted — experienced users will want it off
+- **Render a layout variant, not "the" layout.** Per [ADR-0003](../adr/0003-two-layout-variants-user-overridable.md)
+  the keyboard shows NiDA or Apple's macOS variant; it infers which from
+  `event.code` paired with the character that key produced, and offers a
+  persisted manual override that detection never overrules.
 
 ### The keyboard is a guide, never an input device
 
