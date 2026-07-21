@@ -186,7 +186,7 @@ describe('corpus coverage', () => {
   // key produces means the layout is wrong or incomplete. Both variants have to
   // answer for the whole corpus — a learner on either one has to be able to
   // finish every drill.
-  const codePoints = [...new Set(corpus.flatMap((drill) => [...drill]))].sort()
+  const codePoints = [...new Set(corpus.flatMap(({ km }) => [...km]))].sort()
   const cases = LAYOUT_VARIANTS.flatMap(({ id }) =>
     codePoints.map((char) => [id, describeCodePoint(char), char] as const),
   )

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, useTemplateRef, watch } from 'vue'
-import { useDrills } from '@/composables/useDrills'
+import { useDrills, sentences, type DrillOrder } from '@/composables/useDrills'
+import type { Drill } from '@/data/corpus'
 import { useLayoutVariant } from '@/composables/useLayoutVariant'
 import { levelFromModifiers } from '@/lib/layoutVariant'
 import type { Level } from '@/data/khmerLayout'
@@ -25,7 +26,24 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import StatsHeatmap from '@/components/StatsHeatmap.vue'
 
-const { currentDrill, setNextDrill } = useDrills()
+interface Props {
+  /** The drills to draw from. Defaults to free practice over the sentences. */
+  pool?: Drill[]
+  order?: DrillOrder
+}
+
+const props = withDefaults(defineProps<Props>(), { order: 'random' })
+
+/**
+ * Reported when a drill is finished, for whoever is keeping score — a lesson
+ * records it against its pass criteria; free practice ignores it.
+ */
+const emit = defineEmits<{ complete: [{ drillId: string; accuracy: number; kpm: number }] }>()
+
+const { currentDrill, currentDrillId, position, setNextDrill } = useDrills({
+  pool: () => props.pool ?? sentences(),
+  order: props.order,
+})
 const { visible: isKeyboardVisible, toggle: toggleKeyboard } = useKeyboardVisible()
 const { recordKeystroke, startDrill, weakest } = useStats()
 
@@ -254,7 +272,12 @@ const weakestSigns = ref<SignStat[]>([])
 
 watch(isComplete, (isCompleted) => {
   typingCompletionVisible.value = isCompleted
-  if (isCompleted) weakestSigns.value = weakest()
+  if (!isCompleted) return
+
+  weakestSigns.value = weakest()
+  if (currentDrillId.value) {
+    emit('complete', { drillId: currentDrillId.value, accuracy: accuracy.value, kpm: kpm.value })
+  }
 })
 
 // Speed is measured in keystrokes, not clusters — see docs/adr/0002
@@ -339,6 +362,14 @@ function resetTyping() {
   -->
   <LayoutSetupPanel v-if="isWrongLayout" @dismiss="isWrongLayout = false" />
   <div class="controls">
+    <!--
+      Only where the order means something: a lesson is a list to work through,
+      while free practice is a stream and "drill 4 of 308" would be a countdown
+      nobody asked for.
+    -->
+    <p v-if="order === 'sequential'" class="position" lang="en">
+      Drill {{ position.index + 1 }} of {{ position.total }}
+    </p>
     <Button
       icon="pi pi-refresh"
       @click="resetTyping"
@@ -394,6 +425,13 @@ function resetTyping() {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+
+  .position {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--p-text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 /*

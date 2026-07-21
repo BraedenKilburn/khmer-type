@@ -51,7 +51,7 @@ describe('toClusters', () => {
     expect(toClusters('ក្a')).toEqual(['ក្', 'a'])
   })
 
-  it.each(corpus)('round-trips every drill in the corpus: %s', (drill) => {
+  it.each(corpus.map(({ km }) => km))('round-trips every drill in the corpus: %s', (drill) => {
     expect(toClusters(drill).join('')).toBe(drill)
   })
 })
