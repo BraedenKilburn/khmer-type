@@ -17,9 +17,12 @@ import TypingCompletion from '@/components/TypingCompletion.vue'
 import SignStrip from '@/components/SignStrip.vue'
 import LayoutSetupPanel from '@/components/LayoutSetupPanel.vue'
 import LayoutVariantPicker from '@/components/LayoutVariantPicker.vue'
+import KhmerKeyboard from '@/components/KhmerKeyboard.vue'
+import { useKeyboardVisible } from '@/composables/useKeyboardVisible'
 import Button from 'primevue/button'
 
 const { currentDrill, setNextDrill } = useDrills()
+const { visible: isKeyboardVisible, toggle: toggleKeyboard } = useKeyboardVisible()
 
 /** Typed text, cursor, and the raw key sequence — see `@/lib/typingSession`. */
 const session = ref<TypingSession>(emptySession)
@@ -47,6 +50,13 @@ const cursorClusterIndex = computed(() =>
  * exactly that state. Between clusters there is nothing to decompose.
  */
 const activeCluster = computed(() => renderClusters.value.find(({ state }) => state === 'active'))
+
+/**
+ * The code point the drill expects next — what the on-screen keyboard points
+ * at. One code point, not one sign: a subscript is two presses, and the key to
+ * show is the one for the press being asked for right now.
+ */
+const nextCodePoint = computed(() => currentDrill.value[cursorIndex.value])
 
 // ===============================
 // Handle Typing (hidden input)
@@ -309,8 +319,21 @@ function resetTyping() {
       aria-label="New drill"
       title="Get a new drill"
     />
+    <Button
+      :icon="isKeyboardVisible ? 'pi pi-eye-slash' : 'pi pi-eye'"
+      @click="toggleKeyboard"
+      severity="secondary"
+      variant="text"
+      :aria-label="isKeyboardVisible ? 'Hide the on-screen keyboard' : 'Show the on-screen keyboard'"
+      :title="isKeyboardVisible ? 'Hide the on-screen keyboard' : 'Show the on-screen keyboard'"
+    />
     <LayoutVariantPicker />
   </div>
+  <!--
+    Below the controls, so showing or hiding it never moves the typing line.
+    A guide only — see `KhmerKeyboard.vue`; the keys do not type.
+  -->
+  <KhmerKeyboard v-if="isKeyboardVisible" :next="nextCodePoint" />
   <TypingCompletion
       v-model:visible="typingCompletionVisible"
       :kpm="kpm"
