@@ -99,13 +99,10 @@ export function useDrills({ pool = sentences, order = 'random' }: DrillsOptions 
     return available[pickedIndex === -1 ? 0 : pickedIndex]
   }
 
-  /** Start from the top — a lesson's first drill, or a fresh random one. */
-  function restart() {
-    usedIndices = []
-    currentIndex.value = 0
-    if (order !== 'sequential') setNextDrill()
-  }
-
+  /*
+   * Free practice opens on a random drill; a lesson opens on its first, which
+   * is where `currentIndex` already sits.
+   */
   if (order !== 'sequential') setNextDrill()
 
   return {
@@ -113,6 +110,5 @@ export function useDrills({ pool = sentences, order = 'random' }: DrillsOptions 
     currentDrillId,
     position,
     setNextDrill,
-    restart,
   }
 }
