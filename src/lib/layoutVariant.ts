@@ -29,6 +29,7 @@ import {
   type Level,
 } from '@/data/khmerLayout'
 import { macKhmerLayout } from '@/data/macKhmerLayout'
+import type { Os } from '@/lib/platform'
 
 export type LayoutVariant = 'nida' | 'macos'
 
@@ -42,8 +43,30 @@ const LAYOUTS: Record<LayoutVariant, readonly KeyDef[]> = {
   macos: macKhmerLayout,
 }
 
-/** The variant assumed until typing says otherwise — NiDA is the standard. */
+/** The variant assumed where the platform says nothing — NiDA is the standard. */
 export const DEFAULT_VARIANT: LayoutVariant = 'nida'
+
+/**
+ * The variant to draw before any keystroke has discriminated.
+ *
+ * Detection is passive and most drills never press a key that tells the tables
+ * apart: at `base` level only Space and Backslash diverge, so a learner working
+ * through single words can type for a long time without producing any evidence
+ * at all. Until they do, this is the whole answer — which made a fixed NiDA
+ * default a macOS user's permanent, silent, wrong keyboard.
+ *
+ * The OS is the best prior available. macOS ships exactly one Khmer input
+ * source and it is Apple's, so a Mac is overwhelmingly likely to be on it;
+ * Windows and Linux ship NiDA. This is still only a guess and is still the
+ * weakest evidence there is — a keystroke overrules it and the user overrules
+ * both, per ADR-0003. Someone who installed a NiDA layout on a Mac starts on
+ * the wrong table now instead of the right one, which is the trade the ADR
+ * already names: they are the case detection misreads, and the override is
+ * what serves them.
+ */
+export function defaultVariantFor(os: Os): LayoutVariant {
+  return os === 'macos' ? 'macos' : DEFAULT_VARIANT
+}
 
 /** The key table for a variant, in board order. */
 export function layoutFor(variant: LayoutVariant): readonly KeyDef[] {

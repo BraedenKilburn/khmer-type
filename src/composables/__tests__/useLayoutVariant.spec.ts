@@ -15,13 +15,59 @@ async function freshComposable() {
   return useLayoutVariant()
 }
 
+const MAC_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15'
+const WINDOWS_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
+
+/**
+ * Stated outright in every test that depends on it. jsdom's own user agent
+ * reads as Windows — "darwin" contains "win" — so a suite that left it alone
+ * would be asserting NiDA by coincidence rather than by intent.
+ */
+function onPlatform(userAgent: string) {
+  Object.defineProperty(window.navigator, 'userAgent', { value: userAgent, configurable: true })
+}
+
 beforeEach(() => {
   localStorage.clear()
+  onPlatform(WINDOWS_UA)
 })
 
 describe('useLayoutVariant', () => {
   it('assumes NiDA until typing says otherwise', async () => {
     const { variant } = await freshComposable()
+    expect(variant.value).toBe('nida')
+  })
+
+  /*
+   * Detection is passive and rarely fires: only Space and Backslash tell the
+   * tables apart without a modifier. So the pre-evidence guess is what a macOS
+   * learner actually sees, and a fixed NiDA default meant they sat on the wrong
+   * board — wrong about the spacebar, the most-pressed key there is.
+   */
+  it('assumes Apple’s layout on a Mac, before anything has been typed', async () => {
+    onPlatform(MAC_UA)
+    const { variant } = await freshComposable()
+    expect(variant.value).toBe('macos')
+  })
+
+  it('still lets a keystroke overrule the platform guess', async () => {
+    onPlatform(MAC_UA)
+    const { variant, observeKeystroke } = await freshComposable()
+
+    // A NiDA layout installed on a Mac: the evidence beats the machine.
+    observeKeystroke('Slash', 'shift', '?')
+
+    expect(variant.value).toBe('nida')
+  })
+
+  it('still lets the user overrule the platform guess', async () => {
+    onPlatform(MAC_UA)
+    const { variant, override } = await freshComposable()
+
+    override.value = 'nida'
+
     expect(variant.value).toBe('nida')
   })
 

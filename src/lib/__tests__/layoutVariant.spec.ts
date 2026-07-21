@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { layoutFor, levelFromModifiers, variantFromKeystroke } from '@/lib/layoutVariant'
+import {
+  defaultVariantFor,
+  layoutFor,
+  levelFromModifiers,
+  variantFromKeystroke,
+} from '@/lib/layoutVariant'
 
 describe('variantFromKeystroke', () => {
   it('names the variant from the spacebar, where the two differ most', () => {
@@ -60,5 +65,25 @@ describe('levelFromModifiers', () => {
 describe('layoutFor', () => {
   it('hands back a different table per variant', () => {
     expect(layoutFor('nida')).not.toBe(layoutFor('macos'))
+  })
+})
+
+/*
+ * The guess that stands until a keystroke discriminates. It stood for a long
+ * time in practice: at `base` level only Space and Backslash tell the tables
+ * apart, so a Mac user drilling single words never produced any evidence and
+ * sat on NiDA — the wrong board, silently, for the whole session.
+ */
+describe('defaultVariantFor', () => {
+  it('assumes Apple’s layout on macOS, the only Khmer source that ships there', () => {
+    expect(defaultVariantFor('macos')).toBe('macos')
+  })
+
+  it('assumes the NiDA standard on Windows, which ships it', () => {
+    expect(defaultVariantFor('windows')).toBe('nida')
+  })
+
+  it('assumes the NiDA standard on Linux, which ships it', () => {
+    expect(defaultVariantFor('linux')).toBe('nida')
   })
 })
