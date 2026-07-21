@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, useTemplateRef, watch } from 'vue'
-import { useToast } from 'primevue/usetoast';
 import { useDrills } from '@/composables/useDrills'
 import { toRenderClusters } from '@/lib/clusters'
 import { accuracyFrom, tallyKeystrokes } from '@/lib/accuracy'
@@ -13,6 +12,7 @@ import {
 } from '@/lib/typingSession'
 import TypingCompletion from '@/components/TypingCompletion.vue'
 import SignStrip from '@/components/SignStrip.vue'
+import LayoutSetupPanel from '@/components/LayoutSetupPanel.vue'
 import Button from 'primevue/button'
 
 const { currentDrill, setNextDrill } = useDrills()
@@ -48,8 +48,6 @@ const activeCluster = computed(() => renderClusters.value.find(({ state }) => st
 // Handle Typing (hidden input)
 // ===============================
 
-const toast = useToast()
-
 const isFocused = ref(false)
 const startTime = ref<number | null>(null)
 const endTime = ref<number | null>(null)
@@ -70,15 +68,16 @@ function focusTypingArea() {
 /** True between `compositionstart` and `compositionend`. */
 const isComposing = ref(false)
 
-function warnWrongLayout() {
-  toast.removeAllGroups()
-  toast.add({
-    severity: 'info',
-    summary: 'Unexpected English Input',
-    detail: 'Please switch to Khmer input mode to type correctly.',
-    life: 3000,
-  })
-}
+/**
+ * Whether the user is being shown how to install a Khmer layout.
+ *
+ * Raised by a Latin letter, which means the user is typing on their Latin
+ * layout and no drill has anything for them to match. It stays raised while
+ * that is still true: the fix is a trip through system settings, which is
+ * longer than any toast lives. A Khmer keystroke landing is the proof it
+ * worked, so that is what lowers it.
+ */
+const isWrongLayout = ref(false)
 
 /**
  * Fold committed text into the session — one code point from a keypress, a
@@ -89,8 +88,10 @@ function commit(text: string) {
   if (!text || isComplete.value) return
 
   const khmer = withoutLatinLetters(text)
-  if (khmer !== text) warnWrongLayout()
+  if (khmer !== text) isWrongLayout.value = true
   if (!khmer) return
+
+  isWrongLayout.value = false
 
   startTime.value ??= Date.now()
   session.value = commitText(session.value, currentDrill.value, khmer)
@@ -264,6 +265,12 @@ function resetTyping() {
       :typed-code-units="activeCluster ? cursorIndex - activeCluster.start : 0"
     />
   </div>
+  <!--
+    Below the typing container, never above it: the panel appears mid-drill, and
+    anything that reserved space above would either shift the line the user is
+    reading or hold a gap open for a problem most users never hit.
+  -->
+  <LayoutSetupPanel v-if="isWrongLayout" @dismiss="isWrongLayout = false" />
   <div class="controls">
     <Button
       icon="pi pi-refresh"
