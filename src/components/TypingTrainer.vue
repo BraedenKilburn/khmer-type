@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, useTemplateRef, watch } from 'vue'
 import { useDrills } from '@/composables/useDrills'
+import { useLayoutVariant } from '@/composables/useLayoutVariant'
+import { levelFromModifiers } from '@/lib/layoutVariant'
+import type { Level } from '@/data/khmerLayout'
 import { toRenderClusters } from '@/lib/clusters'
 import { accuracyFrom, tallyKeystrokes } from '@/lib/accuracy'
 import {
@@ -13,6 +16,7 @@ import {
 import TypingCompletion from '@/components/TypingCompletion.vue'
 import SignStrip from '@/components/SignStrip.vue'
 import LayoutSetupPanel from '@/components/LayoutSetupPanel.vue'
+import LayoutVariantPicker from '@/components/LayoutVariantPicker.vue'
 import Button from 'primevue/button'
 
 const { currentDrill, setNextDrill } = useDrills()
@@ -69,6 +73,18 @@ function focusTypingArea() {
 const isComposing = ref(false)
 
 /**
+ * The physical key of the `keydown` in flight, held for the `beforeinput` that
+ * follows it.
+ *
+ * `beforeinput` says what was produced but not which key produced it, and
+ * `keydown` says the opposite; the layout can only be told apart from the pair.
+ * `level` is `undefined` when the modifiers select nothing either table
+ * records — see `levelFromModifiers`.
+ */
+const pendingKey = ref<{ code: string; level?: Level }>()
+const { observeKeystroke } = useLayoutVariant()
+
+/**
  * Whether the user is being shown how to install a Khmer layout.
  *
  * Raised by a Latin letter, which means the user is typing on their Latin
@@ -111,6 +127,8 @@ function commit(text: string) {
 function handleKeydown(event: KeyboardEvent) {
   if (event.isComposing || isComposing.value) return
 
+  pendingKey.value = { code: event.code, level: levelFromModifiers(event.shiftKey, event.altKey) }
+
   if (event.key === 'Backspace') {
     event.preventDefault()
     session.value = rewind(session.value)
@@ -148,7 +166,17 @@ function handleBeforeInput(payload: Event) {
   event.preventDefault()
 
   if (event.inputType.startsWith('insertFrom')) return
-  if (event.inputType.startsWith('insert')) commit(event.data ?? '')
+  if (!event.inputType.startsWith('insert')) return
+
+  /*
+   * The physical key from `keydown`, paired with the text it just produced —
+   * the evidence that tells NiDA from Apple's variant. Only direct entry
+   * carries it: a composed sequence has no single key behind it.
+   */
+  const key = pendingKey.value
+  if (key?.level && event.data) observeKeystroke(key.code, key.level, event.data)
+
+  commit(event.data ?? '')
 }
 
 function handleCompositionStart() {
@@ -281,6 +309,7 @@ function resetTyping() {
       aria-label="New drill"
       title="Get a new drill"
     />
+    <LayoutVariantPicker />
   </div>
   <TypingCompletion
       v-model:visible="typingCompletionVisible"
@@ -292,6 +321,12 @@ function resetTyping() {
 </template>
 
 <style scoped>
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /*
  * A touch keyboard trains a different motor skill, so there is no mobile
  * experience to offer — just say so. Deliberately out of scope; see

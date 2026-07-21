@@ -26,29 +26,20 @@
  * ## macOS ships a near-variant, not this layout
  *
  * macOS's input source is named "Khmer" (`com.apple.keylayout.Khmer`) and is
- * *not* NiDA. Dumped via `UCKeyTranslate`, it diverges on 10 of the 48 keys at
- * `base` or `shift` (22 once `alt` is counted) — most consequentially:
- *
- * | Key       | NiDA (here)    | macOS "Khmer" |
- * | --------- | -------------- | ------------- |
- * | Space     | ZWSP / space   | space / ZWSP  |
- * | Slash     | ៊ / ?          | ៊ / ឯ         |
- * | Backslash | ឮ / ឭ          | ឭ / ឮ         |
- * | KeyA      | ា / ាំ (lig.)  | ា / ឫ         |
- * | Semicolon | ើ / ោះ (lig.)  | ើ / ៖         |
- * | Comma     | ុំ / ុះ (lig.)  | ឦ / ឱ         |
- *
- * So the on-screen keyboard will be wrong on those keys for a macOS user on
- * Apple's layout. Fixing that means a second table, not an edit to this one —
- * this file is NiDA and should stay NiDA.
+ * *not* NiDA — it diverges on 10 of the 48 keys at `base` or `shift`, the
+ * spacebar among them. That table is `@/data/macKhmerLayout`, dumped from the
+ * OS, and the two are meant to disagree: **this file is NiDA and stays NiDA.**
+ * Which one a given user is on is inferred at runtime by
+ * `@/lib/layoutVariant`, per docs/adr/0003-two-layout-variants-user-overridable.md.
  *
  * ## Ligature keys
  *
  * NiDA gives five keys a two-code-point output (`KeyA`+Shift → `ាំ`, and
  * similar on `Semicolon`, `KeyV`, `Comma`). They are recorded faithfully, but
- * `keystrokeFor` never returns one: a keystroke is one code point per
- * `docs/adr/0002-speed-counts-keystrokes.md`, and every code point reachable
- * through a ligature is also reachable as a lone press elsewhere on the board.
+ * `keystrokeFor` in `@/lib/layoutVariant` never returns one: a keystroke is one
+ * code point per `docs/adr/0002-speed-counts-keystrokes.md`, and every code
+ * point reachable through a ligature is also reachable as a lone press
+ * elsewhere on the board.
  */
 
 /** COENG — stacks the following consonant beneath the preceding one. */
@@ -90,7 +81,7 @@ export interface Keystroke {
   level: Level
 }
 
-export const khmerLayout: readonly KeyDef[] = [
+export const nidaLayout: readonly KeyDef[] = [
   // row 1
   { code: 'Backquote', base: '«', shift: '»', alt: '‍', row: 1, finger: 'leftPinky' },
   { code: 'Digit1', base: '១', shift: '!', alt: '‌', row: 1, finger: 'leftPinky' },
@@ -171,25 +162,29 @@ export function invisibleLabel(char: string): string | undefined {
   return INVISIBLE.get(char)
 }
 
-const LEVELS: readonly Level[] = ['base', 'shift', 'alt']
+export const LEVELS: readonly Level[] = ['base', 'shift', 'alt']
 
 /**
- * Index every single-code-point output back to the key that produces it.
+ * Index every single-code-point output of a layout back to the key that
+ * produces it.
  *
  * Ligature outputs are skipped: they emit two code points from one press, so
  * naming one as the way to type a lone `ា` would be a lie. Earlier levels win,
  * so a character reachable unshifted is never reported as needing a modifier.
+ *
+ * Exported because there is more than one layout to index — see
+ * `@/lib/layoutVariant`, which holds one of these per variant.
  */
-const KEYSTROKES = new Map<string, Keystroke>()
-for (const level of LEVELS) {
-  for (const key of khmerLayout) {
-    const output = key[level]
-    if ([...output].length !== 1) continue
-    if (!KEYSTROKES.has(output)) KEYSTROKES.set(output, { code: key.code, level })
-  }
-}
+export function indexKeystrokes(layout: readonly KeyDef[]): Map<string, Keystroke> {
+  const keystrokes = new Map<string, Keystroke>()
 
-/** Where to press to produce `char`, or `undefined` if the layout cannot. */
-export function keystrokeFor(char: string): Keystroke | undefined {
-  return KEYSTROKES.get(char)
+  for (const level of LEVELS) {
+    for (const key of layout) {
+      const output = key[level]
+      if ([...output].length !== 1) continue
+      if (!keystrokes.has(output)) keystrokes.set(output, { code: key.code, level })
+    }
+  }
+
+  return keystrokes
 }
