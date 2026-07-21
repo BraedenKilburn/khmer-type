@@ -46,6 +46,25 @@ const DIGIT = /^[០-៩]$/
 /** Whitespace, ZWSP included: it is a key on the layout and costs a keystroke. */
 const SPACE = /^[\s​]$/
 
+/**
+ * The 33 consonants of the Khmer alphabet, in traditional order.
+ *
+ * Unicode lists 35 code points from `ក` to `អ`; `ឝ` and `ឞ` are transliteration
+ * letters for Pali and Sanskrit rather than letters of the alphabet, and no
+ * learner is drilled on them. Code point order *is* the traditional order for
+ * the rest, which is why this reads as a range with two holes rather than a
+ * hand-written list.
+ */
+export const BASE_CONSONANTS: readonly string[] = Array.from(
+  { length: 0x17a2 - 0x1780 + 1 },
+  (_, index) => String.fromCodePoint(0x1780 + index),
+).filter((consonant) => consonant !== 'ឝ' && consonant !== 'ឞ')
+
+/** Every consonant in its subscript form — a different key, a different skill. */
+export const SUBSCRIPT_CONSONANTS: readonly string[] = BASE_CONSONANTS.map(
+  (consonant) => COENG + consonant,
+)
+
 export type SignKind =
   | 'baseConsonant'
   | 'subscriptConsonant'

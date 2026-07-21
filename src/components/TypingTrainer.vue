@@ -22,10 +22,15 @@ import { useKeyboardVisible } from '@/composables/useKeyboardVisible'
 import { useStats } from '@/composables/useStats'
 import type { SignStat } from '@/lib/stats'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
+import StatsHeatmap from '@/components/StatsHeatmap.vue'
 
 const { currentDrill, setNextDrill } = useDrills()
 const { visible: isKeyboardVisible, toggle: toggleKeyboard } = useKeyboardVisible()
 const { recordKeystroke, startDrill, weakest } = useStats()
+
+/** The heatmap is a thing you go and look at, not a thing on screen while typing. */
+const isStatsVisible = ref(false)
 
 /** Typed text, cursor, and the raw key sequence — see `@/lib/typingSession`. */
 const session = ref<TypingSession>(emptySession)
@@ -351,8 +356,24 @@ function resetTyping() {
       :aria-label="isKeyboardVisible ? 'Hide the on-screen keyboard' : 'Show the on-screen keyboard'"
       :title="isKeyboardVisible ? 'Hide the on-screen keyboard' : 'Show the on-screen keyboard'"
     />
+    <Button
+      icon="pi pi-chart-bar"
+      @click="isStatsVisible = true"
+      severity="secondary"
+      variant="text"
+      aria-label="Your progress"
+      title="Your progress, sign by sign"
+    />
     <LayoutVariantPicker />
   </div>
+
+  <!--
+    In a dialog rather than on the page: it is a thing you go and look at
+    between drills, and putting it inline would push the keyboard off screen.
+  -->
+  <Dialog v-model:visible="isStatsVisible" header="Your progress" modal dismissable-mask>
+    <StatsHeatmap />
+  </Dialog>
   <!--
     Below the controls, so showing or hiding it never moves the typing line.
     A guide only — see `KhmerKeyboard.vue`; the keys do not type.
