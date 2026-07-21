@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
+import { displaySign } from '@/lib/signs'
+import { errorRate, hesitationMs, type SignStat } from '@/lib/stats'
 
 interface Props {
   kpm: number
   kps: number | string
   accuracy: number
+  /**
+   * The signs to practise, worst first — across every session, not just this
+   * drill. A single run is too few keystrokes to say anything about a sign.
+   */
+  weakestSigns?: SignStat[]
 }
-defineProps<Props>()
+withDefaults(defineProps<Props>(), { weakestSigns: () => [] })
 
 /**
  * Restarting is a thing the user asked for, not a consequence of this dialog
@@ -39,6 +46,25 @@ const visible = defineModel<boolean>(
         <span class="stat-value">{{ accuracy }}%</span>
       </div>
     </div>
+    <!--
+      A plain list, deliberately: this is the first thing built on the per-sign
+      record, and the numbers should be readable and checkable before any of
+      them get tinted. The heatmap comes next.
+    -->
+    <section v-if="weakestSigns.length" class="weakest">
+      <h3>Signs to practise</h3>
+      <ul>
+        <li v-for="stat in weakestSigns" :key="stat.sign">
+          <span class="sign" lang="km">{{ displaySign(stat.sign) }}</span>
+          <span class="detail">
+            {{ Math.round((errorRate(stat) ?? 0) * 100) }}% wrong ·
+            {{ Math.round(hesitationMs(stat) ?? 0) }}ms ·
+            {{ stat.attempts }} {{ stat.attempts === 1 ? 'attempt' : 'attempts' }}
+          </span>
+        </li>
+      </ul>
+    </section>
+
     <div class="footer">
       <Button @click="$emit('restart')">Try Again</Button>
     </div>
@@ -66,6 +92,42 @@ const visible = defineModel<boolean>(
       font-size: 2rem;
       font-weight: bold;
     }
+  }
+}
+
+.weakest {
+  margin-bottom: var(--p-dialog-header-padding);
+
+  h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+    opacity: 0.7;
+    font-weight: normal;
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+
+  .sign {
+    font-size: 1.5rem;
+    min-width: 2ch;
+  }
+
+  .detail {
+    font-size: 0.8rem;
+    opacity: 0.7;
   }
 }
 

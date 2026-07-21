@@ -19,10 +19,13 @@ import LayoutSetupPanel from '@/components/LayoutSetupPanel.vue'
 import LayoutVariantPicker from '@/components/LayoutVariantPicker.vue'
 import KhmerKeyboard from '@/components/KhmerKeyboard.vue'
 import { useKeyboardVisible } from '@/composables/useKeyboardVisible'
+import { useStats } from '@/composables/useStats'
+import type { SignStat } from '@/lib/stats'
 import Button from 'primevue/button'
 
 const { currentDrill, setNextDrill } = useDrills()
 const { visible: isKeyboardVisible, toggle: toggleKeyboard } = useKeyboardVisible()
+const { recordKeystroke, startDrill, weakest } = useStats()
 
 /** Typed text, cursor, and the raw key sequence — see `@/lib/typingSession`. */
 const session = ref<TypingSession>(emptySession)
@@ -120,7 +123,19 @@ function commit(text: string) {
   isWrongLayout.value = false
 
   startTime.value ??= Date.now()
-  session.value = commitText(session.value, currentDrill.value, khmer)
+
+  /*
+   * Recorded per code point, before the cursor moves past it — a composed IME
+   * commit is several keystrokes however it arrived, per ADR-0002, and each one
+   * is an attempt at whichever sign it landed in.
+   */
+  for (const keystroke of khmer) {
+    const cursor = session.value.cursorIndex
+    if (cursor >= currentDrill.value.length) break
+    recordKeystroke(currentDrill.value, cursor, keystroke)
+    session.value = commitText(session.value, currentDrill.value, keystroke)
+  }
+
   if (isComplete.value) endTime.value = Date.now()
 }
 
@@ -225,8 +240,16 @@ onMounted(() => {
 // ===============================
 
 const typingCompletionVisible = ref(false)
+
+/**
+ * The signs to practise, read when the drill ends rather than live: a list that
+ * reordered itself under the user's eyes mid-drill would be noise.
+ */
+const weakestSigns = ref<SignStat[]>([])
+
 watch(isComplete, (isCompleted) => {
   typingCompletionVisible.value = isCompleted
+  if (isCompleted) weakestSigns.value = weakest()
 })
 
 // Speed is measured in keystrokes, not clusters — see docs/adr/0002
@@ -261,6 +284,7 @@ function resetTyping() {
   session.value = emptySession
   startTime.value = null
   endTime.value = null
+  startDrill()
   setNextDrill()
   nextTick(() => focusTypingArea())
 }
@@ -339,6 +363,7 @@ function resetTyping() {
       :kpm="kpm"
       :kps="kps"
       :accuracy="accuracy"
+      :weakest-signs="weakestSigns"
       @restart="handleRestart"
     />
 </template>
