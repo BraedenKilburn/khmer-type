@@ -3,6 +3,7 @@ import { curriculum, lessonById } from '@/data/lessons'
 import { corpus } from '@/data/corpus'
 import { drillTags } from '@/data/drillTags'
 import { BASE_CONSONANTS } from '@/lib/signs'
+import { keystrokeFor } from '@/lib/layoutVariant'
 
 const drillIds = new Set(corpus.map(({ id }) => id))
 
@@ -64,6 +65,38 @@ describe('the curriculum', () => {
     const introduced = new Set(curriculum.flatMap(({ introduces }) => introduces))
     for (const vowel of 'ាិីឹឺុូួើឿៀេែៃោៅ') {
       expect(introduced.has(vowel), vowel).toBe(true)
+    }
+  })
+
+  it('introduces every independent vowel both layouts can produce', () => {
+    // Task 2 of the v3 plan names ឝ ឞ ឥ ឦ ឧ ឨ as letters no drill reaches.
+    // Four of those six are drillable; ឝ ឞ ឨ are not, because NiDA has no key
+    // for them and a drill nobody on the standard layout can finish is not a
+    // drill. `reachable` is the honest version of that bullet.
+    const introduced = new Set(curriculum.flatMap(({ introduces }) => introduces))
+    const independents = Array.from({ length: 0x17b3 - 0x17a3 + 1 }, (_, index) =>
+      String.fromCodePoint(0x17a3 + index),
+    )
+    const reachable = independents.filter(
+      (vowel) => keystrokeFor(vowel, 'nida') && keystrokeFor(vowel, 'macos'),
+    )
+
+    expect(reachable).toHaveLength(14)
+    for (const vowel of reachable) {
+      expect(introduced.has(vowel), vowel).toBe(true)
+    }
+  })
+
+  it('drills no letter that NiDA cannot type', () => {
+    // The three the plan asked for and the corpus cannot carry. Pinned, so a
+    // future edit that slips one into a drill fails here and not in a learner's
+    // hands.
+    for (const unreachable of 'ឝឞឨឣឤ') {
+      expect(keystrokeFor(unreachable, 'nida'), unreachable).toBeUndefined()
+      expect(
+        corpus.some(({ km }) => km.includes(unreachable)),
+        unreachable,
+      ).toBe(false)
     }
   })
 

@@ -137,6 +137,31 @@ export const corpus: Drill[] = [
   { id: 'e102', km: 'ឈើ ធឿ វៀ', kind: 'exercise' },
   { id: 'e103', km: 'ញឿ នៀ សេ', kind: 'exercise' },
 
+  /*
+   * The independent vowels — letters that stand alone rather than attaching to
+   * a consonant, and the ones the sentence corpus almost never reaches for.
+   * Most sit on AltGr, which is why a learner meets them last and why they are
+   * worth drilling at all.
+   *
+   * `ឝ` `ឞ` `ឨ` are deliberately absent: NiDA has no key for them, so a drill
+   * containing one would be impossible to finish on the standard layout. `ឣ`
+   * and `ឤ` are on neither layout.
+   */
+  { id: 'e104', km: 'ឥ ឦ ឧ ឩ', kind: 'exercise' },
+  { id: 'e105', km: 'ឥឦឧឩ', kind: 'exercise' },
+  { id: 'e106', km: 'ឩ ឧ ឦ ឥ', kind: 'exercise' },
+  { id: 'e107', km: 'ឪ ឫ ឬ ឭ', kind: 'exercise' },
+  { id: 'e108', km: 'ឪឫឬឭ', kind: 'exercise' },
+  { id: 'e109', km: 'ឭ ឬ ឫ ឪ', kind: 'exercise' },
+  { id: 'e110', km: 'ឮ ឯ ឰ ឱ', kind: 'exercise' },
+  { id: 'e111', km: 'ឮឯឰឱ', kind: 'exercise' },
+  { id: 'e112', km: 'ឱ ឰ ឯ ឮ', kind: 'exercise' },
+  { id: 'e113', km: 'ឲ ឳ', kind: 'exercise' },
+  { id: 'e114', km: 'ឲឳ', kind: 'exercise' },
+  { id: 'e115', km: 'ឳ ឲ', kind: 'exercise' },
+  { id: 'e116', km: 'ឥ ឦ ឧ ឩ ឪ ឫ ឬ ឭ ឮ ឯ ឰ ឱ ឲ ឳ', kind: 'exercise' },
+  { id: 'e117', km: 'ឥ ឧ ឪ ឬ ឮ ឰ ឲ', kind: 'exercise' },
+
   /* Sentences — real Khmer. */
 
   { id: 's001', km: 'សូមស្វាគមន៏!', kind: 'sentence' },

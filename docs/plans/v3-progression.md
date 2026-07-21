@@ -58,20 +58,42 @@ Commit the generated tags rather than computing at runtime. The corpus is static
 
 ---
 
-## Task 2 — Author beginner content — ⚠️ half done
+## Task 2 — Author beginner content ✅
 
-**Shipped:** 103 generated key-location exercises (`e001`–`e103`) covering all
-33 consonants in their traditional vargas, every dependent vowel sign
-individually, twelve stacking patterns one at a time, and deliberate coverage
-for the ten letters the sentences barely use. The corpus now has 27 drills of
-base consonants alone, where it had none, and 143 with no stacking.
+**Shipped:** 117 key-location exercises (`e001`–`e117`), against the 80–120 this
+task asked for, one for each bullet below:
 
-**Still open, and still yours:** everything with *meaning*. The exercises are
-sequences and say so; they make no claim to be words. Short real sentences at
-the bottom of the difficulty range, and natural phrasing a beginner would
-actually want to type, are the part that cannot be generated — an agent filling
-that in unsupervised produces plausible-looking wrong Khmer, which is worse than
-an empty corpus slot.
+| Bullet | Drills |
+|---|---|
+| Single consonants in traditional order | `e001`–`e021`, the seven vargas |
+| Consonant pairs, no vowel signs | `e022`–`e027` |
+| Each dependent vowel sign individually | `e028`–`e059`, all sixteen |
+| COENG one pattern at a time | `e060`–`e083`, twelve subscripts |
+| The unused and rare letters | `e084`–`e093` rare consonants, `e104`–`e117` independent vowels |
+
+The corpus now holds 27 drills of base consonants alone where it held none, and
+157 with no stacking against the 64 it started with. All 33 consonants appear,
+where the sentences alone reached 29.
+
+**A correction to the fifth bullet.** It names `ឝ ឞ ឥ ឦ ឧ ឨ`; only three of
+those can be drilled. **NiDA has no key for `ឝ`, `ឞ`, or `ឨ`** — Windows
+`KBDKNI` leaves those slots empty, and only Apple's variant reaches them — and
+neither layout produces `ឣ` or `ឤ`. A drill containing one would be impossible
+to finish on the standard layout, so the lesson covers the fourteen independent
+vowels both tables can produce and a test pins the five that are excluded.
+
+**These are exercises, not sentences, as this task instructed** — "drills at
+this level are not sentences and should not pretend to be." They are sequences
+and say so, which is exactly why they could be generated. The judgement this
+task reserves for a speaker is ordering, and the ordering used is the
+traditional one: the consonants in their vargas.
+
+**Optional, separate, and still yours:** *more real Khmer sentences*. The 308 in
+the corpus are all a speaker wrote, and lesson `sentences-1` already draws the
+twelve gentlest of them, so the curriculum has a real-Khmer shallow end. Adding
+more short sentences would improve it and is not something to generate — an
+agent filling that in unsupervised produces plausible-looking wrong Khmer. It is
+not a gap in this task's checklist.
 
 
 **This is the real work.** The corpus needs roughly 80–120 new short drills covering the bottom of the curriculum, which currently does not exist:
@@ -174,11 +196,11 @@ Add `vue-router` at this point. Keep free practice reachable in one click from a
 ## Definition of done
 
 - [x] Every sentence carries generated feature tags and a difficulty score
-- [x] Beginner drills exist for all 33 consonants and every dependent vowel sign — mechanically. Real Khmer at the shallow end is still unwritten (Task 2)
+- [x] Beginner drills exist for all 33 consonants, every dependent vowel sign, and every independent vowel both layouts can type
 - [x] Lessons gate on accuracy, allow skipping, and include cumulative review
 - [x] Adaptive practice targets a user's measured weak characters
 - [x] Free practice remains one click away
 
 The consonant count is 33, not 35: `ឝ` and `ឞ` are transliteration letters for
-Pali and Sanskrit rather than letters of the alphabet, and no learner is drilled
-on them.
+Pali and Sanskrit rather than letters of the alphabet — and NiDA has no key for
+either, so no learner on the standard layout *could* be drilled on them.

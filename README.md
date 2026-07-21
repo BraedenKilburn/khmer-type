@@ -8,7 +8,7 @@ Khmer text stacks and combines in ways Latin text does not — `ស្វា` is
 visual unit built from four keystrokes, one of which (COENG) renders no glyph at
 all. Khmer Type teaches the layout rather than assuming it:
 
-- **A graded curriculum** — 21 lessons from single consonants to full sentences,
+- **A graded curriculum** — 22 lessons from single consonants to full sentences,
   gated on accuracy and never on speed. Nothing is ever locked; an unfinished
   prerequisite is a label, not a barrier.
 - **Free practice** — random sentences, the original experience, still at `/`.

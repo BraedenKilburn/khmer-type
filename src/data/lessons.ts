@@ -139,6 +139,26 @@ add({
   review: 'e060',
 })
 
+/**
+ * The independent vowels the corpus barely touches.
+ *
+ * Fourteen of them, not the sixteen Unicode lists in the range: `ឣ` and `ឤ` are
+ * on neither layout, and `ឨ` only on Apple's. `ឝ` and `ឞ` are in the same
+ * position — reachable on macOS, absent from NiDA — so none of the three can be
+ * drilled without handing a NiDA learner a drill they cannot finish. The corpus
+ * completeness test in `src/data/__tests__/khmerLayout.spec.ts` is what enforces
+ * that, against both tables.
+ */
+add({
+  id: 'independent-vowels',
+  title: 'Independent vowels ឥ ឦ ឧ ឪ',
+  description:
+    'Vowels that stand on their own, with no consonant to lean on. Most of them live on AltGr.',
+  introduces: [...'ឥឦឧឩឪឫឬឭឮឯឰឱឲឳ'],
+  drills: exerciseRange(104, 117),
+  review: 'e084',
+})
+
 add({
   id: 'mixed-review',
   title: 'Everything so far',
