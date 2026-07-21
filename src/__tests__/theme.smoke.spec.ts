@@ -10,7 +10,12 @@ describe('theme preset', () => {
     mount(Button, {
       props: { label: 'x' },
       global: {
-        plugins: [[PrimeVue, { theme: { preset: KhmerTypePreset, options: { darkModeSelector: '.dark' } } }]],
+        plugins: [
+          [
+            PrimeVue,
+            { theme: { preset: KhmerTypePreset, options: { darkModeSelector: '.dark' } } },
+          ],
+        ],
       },
     })
 
