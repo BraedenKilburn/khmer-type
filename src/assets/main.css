@@ -11,28 +11,138 @@
 @import '@fontsource/battambang/khmer-400.css';
 @import '@fontsource/battambang/khmer-700.css';
 
+/*
+ * The chrome's face. Bundled for the same reason Battambang is — the design is
+ * monospaced throughout, and falling back to a proportional system font would
+ * lose the alignment the numbers and key caps depend on.
+ *
+ * Latin subset only: nothing outside it is ever set in this face.
+ */
+@import '@fontsource/jetbrains-mono/latin-400.css';
+@import '@fontsource/jetbrains-mono/latin-500.css';
+@import '@fontsource/jetbrains-mono/latin-700.css';
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/*
+ * The palette, as the app's own names for it.
+ *
+ * These are aliases onto the PrimeVue ramps defined in `@/theme`, not a second
+ * source of truth — the components and the hand-drawn chrome have to stay the
+ * same colour, and there is only one place to change a hue. The names are by
+ * role because that is how the stylesheets read them: `--kt-sub` is "text that
+ * is not the point right now", whichever grey that turns out to be.
+ */
 :root {
-  --p-surface-secondary: var(--p-surface-100);
-  --p-text-primary: var(--p-surface-950);
-  --p-text-secondary: var(--p-surface-900);
-  --p-text-error: var(--p-red-500);
+  --kt-bg: var(--p-surface-100);
+  --kt-surface: var(--p-surface-200);
+  --kt-surface-dim: var(--p-surface-300);
+  --kt-text: var(--p-surface-900);
+  --kt-sub: var(--p-surface-600);
+  --kt-faint: var(--p-surface-500);
+  /*
+   * Drill text the user has not reached yet, and the only role allowed the
+   * dimmest grey on the ramp. It is 48px and its job is to recede; every other
+   * muted thing on the page is a caption and uses --kt-sub or --kt-faint.
+   */
+  --kt-untyped: var(--p-surface-400);
+  --kt-accent: var(--p-primary-color);
+  /*
+   * Ink for the one place the accent becomes a fill rather than a mark: the
+   * next-key cap on the on-screen keyboard. The accent laid over its own 22%
+   * tint is only 2.6:1, and this is the single element the whole trainer exists
+   * to point at — so the tint keeps the design's weight and the glyph on top of
+   * it steps down the ramp until it is legible.
+   */
+  --kt-accent-ink: var(--p-primary-900);
+  --kt-error: #b3303c;
+  /*
+   * The same red at a readable weight for small text. The design only ever put
+   * its error colour on the 48px drill line, where 3:1 is the bar; the sign
+   * strip now says *which* sign went wrong in 12–13px prose, which needs 4.5.
+   * On light the one colour already clears both, so these are the same.
+   */
+  --kt-error-text: #b3303c;
+
+  /*
+   * The heatmap's sequential ramp, one hue, pale to deep — and the ink for each
+   * step, stated right beside the fill it has to be legible on.
+   *
+   * Here rather than in `StatsHeatmap.vue` because a scheme-conditional
+   * override cannot survive Vue's scoped-CSS transform: `:global(:root.dark)
+   * .heatmap` compiles to `:root.dark[data-v-…]`, which asks `<html>` to carry a
+   * component's scope attribute and so matches nothing. The ramp is palette, and
+   * the palette's light/dark split lives here.
+   *
+   * Fill and ink move together on purpose. They are one decision — a step whose
+   * ink is unreadable has lost the number it was drawn to carry — and splitting
+   * them across two rules is how they drifted apart in the first place.
+   */
+  --kt-heat-0: var(--p-primary-100);
+  --kt-heat-0-ink: var(--p-surface-950);
+  --kt-heat-1: var(--p-primary-300);
+  --kt-heat-1-ink: var(--p-surface-950);
+  --kt-heat-2: var(--p-primary-500);
+  --kt-heat-2-ink: var(--p-surface-950);
+  --kt-heat-3: var(--p-primary-800);
+  --kt-heat-3-ink: var(--p-surface-50);
+  --kt-heat-4: var(--p-primary-950);
+  --kt-heat-4-ink: var(--p-surface-50);
+
+  /* Kept: the components below still read these. They now resolve onto the
+     same ramp as everything else rather than onto stock Aura. */
+  --p-surface-secondary: var(--kt-surface);
+  --p-text-primary: var(--kt-text);
+  --p-text-secondary: var(--kt-sub);
+  --p-text-error: var(--kt-error);
 }
 
 :root.dark {
-  --p-surface-secondary: var(--p-surface-900);
-  --p-text-primary: var(--p-surface-50);
-  --p-text-secondary: var(--p-surface-100);
-  --p-text-error: var(--p-red-500);
+  --kt-bg: var(--p-surface-950);
+  --kt-surface: var(--p-surface-800);
+  --kt-surface-dim: var(--p-surface-900);
+  --kt-text: var(--p-surface-200);
+  --kt-sub: var(--p-surface-300);
+  --kt-faint: var(--p-surface-400);
+  --kt-untyped: var(--p-surface-500);
+  --kt-accent: var(--p-primary-color);
+  --kt-accent-ink: var(--p-primary-300);
+  --kt-error: #ca4754;
+  /* The design's red lifted to 4.55:1 — see the light scheme's note. */
+  --kt-error-text: #d56e78;
+
+  /*
+   * The ramp runs the other way on a dark surface: the quiet end is the step
+   * nearest the page, which here is the darkest one, not the lightest. The ink
+   * flips one step earlier than it does on light because the accent's midpoint
+   * is pale enough to need dark ink in both schemes.
+   */
+  --kt-heat-0: var(--p-primary-950);
+  --kt-heat-0-ink: var(--p-surface-50);
+  --kt-heat-1: var(--p-primary-800);
+  --kt-heat-1-ink: var(--p-surface-50);
+  --kt-heat-2: var(--p-primary-500);
+  --kt-heat-2-ink: var(--p-surface-950);
+  --kt-heat-3: var(--p-primary-300);
+  --kt-heat-3-ink: var(--p-surface-950);
+  --kt-heat-4: var(--p-primary-100);
+  --kt-heat-4-ink: var(--p-surface-950);
 }
 
 body {
-  font-family: 'Arial', sans-serif;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 15px;
+  background-color: var(--kt-bg);
+  color: var(--kt-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--kt-accent) 35%, transparent);
 }
 
 /*
@@ -48,6 +158,26 @@ body {
 
 a {
   text-decoration: none;
+  color: var(--kt-accent);
+}
+
+/*
+ * Headings are chrome here, not editorial: the design gives them the same
+ * quiet, lowercase, letter-spaced treatment as every other label, and lets the
+ * Khmer being typed be the only large thing on the page.
+ */
+h1,
+h2,
+h3 {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* One visible focus treatment, the accent, everywhere — the design has no
+   second colour to spend on it. */
+:focus-visible {
+  outline: 1px solid var(--kt-accent);
+  outline-offset: 2px;
 }
 
 #app {

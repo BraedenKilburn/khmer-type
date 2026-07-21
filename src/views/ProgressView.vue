@@ -38,12 +38,18 @@ function startOver() {
 <style scoped>
 .progress-view {
   max-width: 1200px;
-  width: 95%;
+  width: 100%;
 
   footer {
     display: flex;
     justify-content: flex-end;
-    margin-top: 1rem;
+    margin-top: 1.5rem;
+
+    :deep(.p-button) {
+      font-size: 0.6875rem;
+      letter-spacing: 0.06em;
+      text-transform: lowercase;
+    }
   }
 }
 </style>

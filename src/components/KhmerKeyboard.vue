@@ -129,22 +129,29 @@ const spokenTarget = computed(() => {
 </template>
 
 <style scoped>
+/*
+ * The board sits on the page, not in a panel. Each cap is a filled tile and the
+ * fills alone describe the grid, so there are no borders and no container —
+ * removing both is most of what separates this from a settings screen.
+ */
 .keyboard {
-  max-width: 1200px;
-  width: 95%;
-  padding: 12px;
-  border-radius: 12px;
-  background-color: var(--p-surface-secondary);
+  /*
+   * Wider than the typing measure on purpose. The board is 14 keys across, and
+   * every pixel taken off its width comes straight off the Khmer on the caps —
+   * which is the only thing on it a learner is actually reading.
+   */
+  max-width: 1100px;
+  width: 100%;
 
   .board {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
   }
 
   .row {
     display: flex;
-    gap: 4px;
+    gap: 5px;
     justify-content: center;
   }
 
@@ -156,30 +163,41 @@ const spokenTarget = computed(() => {
     flex: 1 1 0;
     min-width: 0;
     aspect-ratio: 1;
-    max-height: 3.25rem;
-    padding: 2px;
-    border: 1px solid var(--p-content-border-color);
-    border-radius: 6px;
+    max-height: 4.25rem;
+    padding: 3px;
+    border: 1px solid transparent;
+    border-radius: var(--p-border-radius-md);
+    background-color: var(--kt-surface);
+    color: var(--kt-sub);
     line-height: 1.1;
     /* A guide, not a control: nothing here is clickable, so nothing here
        should invite a click. */
     cursor: default;
     user-select: none;
 
+    /*
+     * The cap's two Khmer glyphs carry the whole guide, so they get the room.
+     * The shift level is smaller than the base level but not by much — it is
+     * still a Khmer character somebody has to identify, not a decoration.
+     */
     .shift-level {
-      font-size: 0.75rem;
-      opacity: 0.55;
+      font-size: 0.9375rem;
+      color: var(--kt-faint);
+      align-self: flex-end;
+      padding-right: 0.15em;
       min-height: 1em;
+      line-height: 1.2;
     }
 
     .base-level {
-      font-size: 1.05rem;
+      font-size: 1.375rem;
+      line-height: 1.2;
     }
 
     .cap-name {
-      font-size: 0.5rem;
-      letter-spacing: 0.02em;
-      opacity: 0.7;
+      font-size: 0.5625rem;
+      letter-spacing: 0.04em;
+      color: var(--kt-faint);
       text-transform: uppercase;
     }
 
@@ -191,48 +209,67 @@ const spokenTarget = computed(() => {
     &.modifier {
       flex: 2 1 0;
       aspect-ratio: auto;
-      opacity: 0.7;
+      background-color: var(--kt-surface-dim);
+
+      /* These caps are all label and no glyph, and they are wide enough to
+         carry it at a readable size. */
+      .cap-name {
+        font-size: 0.6875rem;
+        text-transform: none;
+      }
     }
 
     /*
      * The target reads as the target three ways over — fill, border, and
      * weight — so it survives both themes and a reader who cannot separate
      * the tint from the surface behind it.
+     *
+     * A tint of the accent rather than a slab of it: on a board this dense a
+     * solid cap is a hole punched in the grid, and the tint plus the accent ink
+     * is the louder signal despite being the quieter colour.
      */
     &.is-target {
-      background-color: var(--p-primary-color);
-      border-color: var(--p-primary-color);
-      color: var(--p-primary-contrast-color);
+      background-color: color-mix(in srgb, var(--kt-accent) 22%, var(--kt-surface));
+      border-color: var(--kt-accent);
+      color: var(--kt-accent-ink);
       font-weight: bold;
 
+      /* Full strength, not a faded inherit: these carry the shift glyph and
+         the COENG name, which are exactly what the highlight is asking for. */
       .shift-level,
       .cap-name {
-        opacity: 0.9;
+        color: inherit;
       }
     }
 
     &.modifier.is-armed {
-      background-color: color-mix(in srgb, var(--p-primary-color) 35%, transparent);
-      border-color: var(--p-primary-color);
-      opacity: 1;
+      background-color: color-mix(in srgb, var(--kt-accent) 22%, var(--kt-surface));
+      border-color: var(--kt-accent);
+      color: var(--kt-accent-ink);
+
+      .cap-name {
+        color: inherit;
+      }
     }
   }
 
   .legend {
-    margin: 0.5rem 0 0;
+    margin: 0.75rem 0 0;
     text-align: center;
-    font-size: 0.8rem;
-    color: var(--p-text-secondary);
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+    color: var(--kt-sub);
     /* Reserved so the board never jumps when the hint appears. */
-    min-height: 1.2em;
+    min-height: 1.4em;
   }
 
   kbd {
-    padding: 0.1em 0.35em;
-    border: 1px solid var(--p-content-border-color);
-    border-radius: 4px;
+    padding: 0.1em 0.4em;
+    border-radius: var(--p-border-radius-sm);
+    background-color: var(--kt-surface);
+    color: var(--kt-sub);
     font-size: 0.9em;
-    font-family: monospace;
+    font-family: inherit;
   }
 }
 

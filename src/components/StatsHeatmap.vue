@@ -138,20 +138,15 @@ const legend = computed(() =>
 </template>
 
 <style scoped>
+/*
+ * The ramp itself is `--kt-heat-*` in `assets/main.css`, together with the ink
+ * each step needs. It is not defined here, and must not be: a scoped component
+ * cannot carry a `:root.dark` override — Vue's transform rewrites
+ * `:global(:root.dark) .heatmap` to `:root.dark[data-v-…]`, which matches
+ * nothing, so the dark ramp silently never applied and dark mode drew the light
+ * ramp under the dark scheme's ink. This file now just spends the tokens.
+ */
 .heatmap {
-  /*
-   * The ramp is the app's own primary hue, one hue light to dark, per the
-   * dataviz guidance. In dark mode it runs the other way — the step nearest
-   * the surface is the quiet end, and on a dark surface that is the dark step,
-   * not the light one. Selected for the mode, never flipped automatically.
-   */
-  --level-0: var(--p-primary-100);
-  --level-1: var(--p-primary-300);
-  --level-2: var(--p-primary-500);
-  --level-3: var(--p-primary-700);
-  --level-4: var(--p-primary-900);
-  --ink-on-fill: var(--p-primary-contrast-color);
-
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -165,23 +160,26 @@ const legend = computed(() =>
 
     h2 {
       margin: 0;
-      font-size: 1.05rem;
+      font-size: 0.8125rem;
+      font-weight: 400;
+      color: var(--kt-text);
     }
 
     .subtitle {
-      margin: 0.15rem 0 0;
-      font-size: 0.85rem;
-      color: var(--p-text-secondary);
+      margin: 0.3rem 0 0;
+      font-size: 0.75rem;
+      line-height: 1.6;
+      color: var(--kt-sub);
     }
   }
 
   h3 {
-    margin: 0 0 0.4rem;
-    font-size: 0.8rem;
-    font-weight: normal;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--p-text-secondary);
+    margin: 0 0 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 400;
+    text-transform: lowercase;
+    letter-spacing: 0.08em;
+    color: var(--kt-faint);
   }
 
   .grid {
@@ -198,17 +196,17 @@ const legend = computed(() =>
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 4px 2px;
+    padding: 5px 2px;
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: var(--p-border-radius-md);
     line-height: 1.2;
 
     .glyph {
-      font-size: 1.2rem;
+      font-size: 1.5rem;
     }
 
     .value {
-      font-size: 0.6rem;
+      font-size: 0.6875rem;
       opacity: 0.85;
       font-variant-numeric: tabular-nums;
     }
@@ -217,30 +215,32 @@ const legend = computed(() =>
        perfectly, and the two must not look alike. */
     &.is-unattempted {
       border-style: dashed;
-      border-color: var(--p-content-border-color);
-      color: var(--p-text-secondary);
-      opacity: 0.55;
+      /* On the modal's own surface, a dim border is no border at all — this
+         has to stay visible or "never typed" reads as an empty cell. */
+      border-color: var(--kt-faint);
+      color: var(--kt-faint);
     }
 
+    /* Each step takes the ink chosen for it, whichever scheme is in force. */
     &.level-0 {
-      background-color: var(--level-0);
-      color: var(--p-surface-950);
+      background-color: var(--kt-heat-0);
+      color: var(--kt-heat-0-ink);
     }
     &.level-1 {
-      background-color: var(--level-1);
-      color: var(--p-surface-950);
+      background-color: var(--kt-heat-1);
+      color: var(--kt-heat-1-ink);
     }
     &.level-2 {
-      background-color: var(--level-2);
-      color: var(--ink-on-fill);
+      background-color: var(--kt-heat-2);
+      color: var(--kt-heat-2-ink);
     }
     &.level-3 {
-      background-color: var(--level-3);
-      color: var(--ink-on-fill);
+      background-color: var(--kt-heat-3);
+      color: var(--kt-heat-3-ink);
     }
     &.level-4 {
-      background-color: var(--level-4);
-      color: var(--ink-on-fill);
+      background-color: var(--kt-heat-4);
+      color: var(--kt-heat-4-ink);
     }
   }
 
@@ -251,8 +251,9 @@ const legend = computed(() =>
     margin: 0;
     padding: 0;
     list-style: none;
-    font-size: 0.75rem;
-    color: var(--p-text-secondary);
+    font-size: 0.6875rem;
+    letter-spacing: 0.02em;
+    color: var(--kt-faint);
 
     li {
       display: flex;
@@ -261,58 +262,37 @@ const legend = computed(() =>
     }
 
     .swatch {
-      width: 0.9rem;
-      height: 0.9rem;
-      border-radius: 3px;
+      width: 0.8rem;
+      height: 0.8rem;
+      border-radius: var(--p-border-radius-sm);
       border: 1px solid transparent;
 
       &.level-0 {
-        background-color: var(--level-0);
+        background-color: var(--kt-heat-0);
       }
       &.level-1 {
-        background-color: var(--level-1);
+        background-color: var(--kt-heat-1);
       }
       &.level-2 {
-        background-color: var(--level-2);
+        background-color: var(--kt-heat-2);
       }
       &.level-3 {
-        background-color: var(--level-3);
+        background-color: var(--kt-heat-3);
       }
       &.level-4 {
-        background-color: var(--level-4);
+        background-color: var(--kt-heat-4);
       }
 
       &.is-unattempted {
         border-style: dashed;
-        border-color: var(--p-content-border-color);
+        border-color: var(--kt-faint);
       }
     }
   }
-}
 
-/*
- * Dark mode is its own set of steps from the same ramp: the quiet end is the
- * step closest to the dark surface, so the ramp runs dark to light rather than
- * light to dark. Ink flips with it.
- */
-:global(:root.dark) .heatmap {
-  --level-0: var(--p-primary-900);
-  --level-1: var(--p-primary-700);
-  --level-2: var(--p-primary-500);
-  --level-3: var(--p-primary-300);
-  --level-4: var(--p-primary-100);
-
-  .cell {
-    &.level-0,
-    &.level-1 {
-      color: var(--p-surface-0);
-    }
-
-    &.level-2,
-    &.level-3,
-    &.level-4 {
-      color: var(--p-surface-950);
-    }
+  :deep(.p-selectbutton) {
+    font-size: 0.75rem;
+    text-transform: lowercase;
   }
 }
 

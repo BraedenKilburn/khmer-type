@@ -31,19 +31,24 @@ const visible = defineModel<boolean>(
 </script>
 
 <template>
-  <Dialog v-model:visible="visible" header="Great job! 🎉" modal :closable="false">
+  <Dialog v-model:visible="visible" header="drill complete" modal :closable="false">
+    <!--
+      The numbers are the reward, so they are the only large thing here and the
+      labels under them shrink to captions — the same weighting the typing
+      screen gives the drill over its chrome.
+    -->
     <div class="stats-grid">
       <div class="stat">
-        <span class="stat-label">KPM</span>
         <span class="stat-value">{{ kpm }}</span>
+        <span class="stat-label">kpm</span>
       </div>
       <div class="stat">
-        <span class="stat-label">KPS</span>
         <span class="stat-value">{{ kps }}</span>
+        <span class="stat-label">kps</span>
       </div>
       <div class="stat">
-        <span class="stat-label">Accuracy</span>
         <span class="stat-value">{{ accuracy }}%</span>
+        <span class="stat-label">accuracy</span>
       </div>
     </div>
     <!--
@@ -52,7 +57,7 @@ const visible = defineModel<boolean>(
       them get tinted. The heatmap comes next.
     -->
     <section v-if="weakestSigns.length" class="weakest">
-      <h3>Signs to practise</h3>
+      <h3>signs to practise</h3>
       <ul>
         <li v-for="stat in weakestSigns" :key="stat.sign">
           <span class="sign" lang="km">{{ displaySign(stat.sign) }}</span>
@@ -66,7 +71,7 @@ const visible = defineModel<boolean>(
     </section>
 
     <div class="footer">
-      <Button @click="$emit('restart')">Try Again</Button>
+      <Button @click="$emit('restart')" label="next drill" variant="outlined" size="small" />
     </div>
   </Dialog>
 </template>
@@ -75,34 +80,39 @@ const visible = defineModel<boolean>(
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--p-dialog-header-padding);
-  margin-bottom: var(--p-dialog-header-padding);
+  gap: 1.5rem;
+  margin-bottom: 1.75rem;
 
   .stat {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.15rem;
 
     .stat-label {
-      font-size: 0.9rem;
-      opacity: 0.7;
+      font-size: 0.6875rem;
+      letter-spacing: 0.08em;
+      color: var(--kt-faint);
     }
 
     .stat-value {
-      font-size: 2rem;
-      font-weight: bold;
+      font-size: 2.25rem;
+      font-weight: 500;
+      line-height: 1.1;
+      color: var(--kt-accent);
+      font-variant-numeric: tabular-nums;
     }
   }
 }
 
 .weakest {
-  margin-bottom: var(--p-dialog-header-padding);
+  margin-bottom: 1.5rem;
 
   h3 {
-    margin: 0 0 0.5rem;
-    font-size: 0.9rem;
-    opacity: 0.7;
-    font-weight: normal;
+    margin: 0 0 0.6rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    color: var(--kt-faint);
+    font-weight: 400;
   }
 
   ul {
@@ -121,13 +131,16 @@ const visible = defineModel<boolean>(
   }
 
   .sign {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     min-width: 2ch;
+    color: var(--kt-text);
   }
 
   .detail {
-    font-size: 0.8rem;
-    opacity: 0.7;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    color: var(--kt-sub);
+    font-variant-numeric: tabular-nums;
   }
 }
 

@@ -100,13 +100,19 @@ const activeOs = ref<Os>(detectOs(navigator.userAgent))
 </template>
 
 <style scoped>
+/*
+ * The one panel the design keeps a surface under. It interrupts a drill to say
+ * something has gone wrong, which is the single case where a block of colour is
+ * doing work rather than decorating — everything else on the page sits directly
+ * on the background.
+ */
 .layout-setup {
-  max-width: 1200px;
-  width: 95%;
+  max-width: 860px;
+  width: 100%;
   padding: 16px 20px;
-  border-radius: 12px;
-  background-color: var(--p-surface-secondary);
-  border-left: 4px solid var(--p-primary-color);
+  border-radius: var(--p-border-radius-lg);
+  background-color: var(--kt-surface);
+  border-left: 2px solid var(--kt-accent);
   text-align: left;
 
   header {
@@ -117,35 +123,53 @@ const activeOs = ref<Os>(detectOs(navigator.userAgent))
 
     h2 {
       margin: 0;
-      font-size: 1rem;
+      font-size: 0.8125rem;
+      letter-spacing: 0.02em;
+      color: var(--kt-accent);
     }
   }
 
   .lede {
-    margin: 0.5rem 0 0;
-    color: var(--p-text-secondary);
-    font-size: 0.9rem;
+    margin: 0.6rem 0 0;
+    color: var(--kt-sub);
+    font-size: 0.75rem;
+    line-height: 1.7;
   }
 
   ol {
     margin: 0;
     padding-left: 1.25rem;
-    font-size: 0.9rem;
-    line-height: 1.7;
+    font-size: 0.75rem;
+    line-height: 1.9;
+    color: var(--kt-text);
+  }
+
+  strong {
+    font-weight: 500;
+    color: var(--kt-text);
   }
 
   .note {
     margin: 0.75rem 0 0;
-    color: var(--p-text-secondary);
-    font-size: 0.85rem;
+    color: var(--kt-sub);
+    font-size: 0.75rem;
+    line-height: 1.7;
   }
 
-  kbd {
+  kbd,
+  code {
     padding: 0.1em 0.4em;
-    border: 1px solid var(--p-content-border-color);
-    border-radius: 4px;
-    font-size: 0.85em;
-    font-family: monospace;
+    border-radius: var(--p-border-radius-sm);
+    background-color: var(--kt-surface-dim);
+    color: var(--kt-sub);
+    font-size: 0.9em;
+    font-family: inherit;
+  }
+
+  :deep(.p-tab) {
+    font-size: 0.75rem;
+    letter-spacing: 0.03em;
+    text-transform: lowercase;
   }
 }
 </style>

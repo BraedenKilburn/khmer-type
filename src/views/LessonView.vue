@@ -76,46 +76,59 @@ function handleComplete({ drillId, accuracy }: { drillId: string; accuracy: numb
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  max-width: 1200px;
-  width: 95%;
+  max-width: 860px;
+  width: 100%;
 
   h2 {
-    margin: 0.15rem 0 0;
+    margin: 0.3rem 0 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
   }
 
   .crumb {
     margin: 0;
-    font-size: 0.8rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
 
     a {
-      color: var(--p-text-secondary);
+      color: var(--kt-faint);
+
+      &:hover {
+        color: var(--kt-sub);
+      }
     }
   }
 
   .description,
   .progress {
-    margin: 0.25rem 0 0;
-    font-size: 0.85rem;
-    color: var(--p-text-secondary);
+    margin: 0.3rem 0 0;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: var(--kt-sub);
+  }
+
+  .progress {
+    font-variant-numeric: tabular-nums;
   }
 
   .note {
-    font-style: italic;
+    color: var(--kt-faint);
   }
 }
 
+/* The one line of praise the app gives, so it gets the accent and nothing
+   else — no fill, no box. */
 .passed {
-  max-width: 1200px;
-  width: 95%;
+  max-width: 860px;
+  width: 100%;
   margin: 0;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background-color: var(--p-surface-secondary);
-  border-left: 4px solid var(--p-primary-color);
-  font-size: 0.9rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--kt-accent);
 }
 
 .missing {
-  color: var(--p-text-secondary);
+  font-size: 0.75rem;
+  color: var(--kt-sub);
 }
 </style>

@@ -39,20 +39,27 @@ const pool = computed(() => [...corpus])
 
 <style scoped>
 .targeted-header {
-  max-width: 1200px;
-  width: 95%;
+  max-width: 860px;
+  width: 100%;
 
   h2 {
     margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    text-transform: lowercase;
   }
 
   .targets {
-    margin: 0.25rem 0 0;
-    font-size: 0.85rem;
-    color: var(--p-text-secondary);
+    margin: 0.35rem 0 0;
+    font-size: 0.75rem;
+    line-height: 1.7;
+    color: var(--kt-sub);
 
-    span {
-      font-size: 1.1rem;
+    /* The signs being aimed at are the point of the sentence, so they get the
+       accent and a size the surrounding prose does not. */
+    span[lang='km'] {
+      font-size: 1.5rem;
+      color: var(--kt-accent);
     }
   }
 }
