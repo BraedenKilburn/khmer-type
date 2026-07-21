@@ -11,8 +11,8 @@
  * enough to build a progression; it does not claim that a 14 is twice a 7.
  */
 
-import { toClusters } from '@/lib/clusters'
-import { signKind, toSigns } from '@/lib/signs'
+import { analyseDrill } from '@/lib/drillAnalysis'
+import { signKind } from '@/lib/signs'
 
 export type DrillFeature =
   | 'baseConsonant'
@@ -55,8 +55,7 @@ const FEATURE_ORDER: DrillFeature[] = [
 
 /** Everything the curriculum knows about one drill's text. */
 export function tagDrill(km: string): DrillTags {
-  const clusters = toClusters(km)
-  const signs = clusters.flatMap((cluster) => toSigns(cluster))
+  const { clusters, signs } = analyseDrill(km)
 
   const features = new Set<DrillFeature>()
   const consonants = new Set<string>()
@@ -75,7 +74,7 @@ export function tagDrill(km: string): DrillTags {
   }
 
   const maxClusterSigns = clusters.reduce(
-    (deepest, cluster) => Math.max(deepest, toSigns(cluster).length),
+    (deepest, cluster) => Math.max(deepest, cluster.signs.length),
     0,
   )
 

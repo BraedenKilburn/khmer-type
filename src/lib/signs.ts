@@ -76,15 +76,30 @@ export type SignKind =
   | 'symbol'
 
 /**
+ * Whether COENG binds what follows it.
+ *
+ * The one statement of the rule the whole app turns on. Segmentation asks it of
+ * a whole segment — is this the consonant the previous segment's trailing COENG
+ * was waiting for — and sign decomposition asks it of a single code point, so
+ * it reads the first code point and answers about that. A COENG with nothing
+ * stackable after it is malformed input rather than a stack, and must not
+ * swallow the space or Latin letter that happens to follow.
+ *
+ * Stated once because two statements would drift, and the two things that would
+ * then disagree are what a cluster is and what a sign is — the two units this
+ * codebase counts in.
+ */
+export function stacksAfterCoeng(following: string): boolean {
+  return KHMER_CONSONANT.test([...following][0] ?? '')
+}
+
+/**
  * Split a cluster into its signs.
  *
  * COENG binds the consonant after it: the pair is one sign and one motor skill,
  * and recording `្ក` as COENG-then-`ក` would file the subscript's difficulty
  * under the base consonant it looks nothing like. Everything else is one code
  * point, one sign.
- *
- * A COENG with nothing stackable after it is malformed rather than a stack, and
- * stands as its own sign — the same call `@/lib/clusters` makes when joining.
  */
 export function toSigns(cluster: string): string[] {
   const codePoints = [...cluster]
@@ -94,7 +109,7 @@ export function toSigns(cluster: string): string[] {
     const codePoint = codePoints[index]
     const next = codePoints[index + 1]
 
-    if (codePoint === COENG && next && KHMER_CONSONANT.test(next)) {
+    if (codePoint === COENG && next && stacksAfterCoeng(next)) {
       signs.push(codePoint + next)
       index++
     } else {

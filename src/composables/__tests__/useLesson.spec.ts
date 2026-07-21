@@ -5,7 +5,8 @@ import { nextTick } from 'vue'
 import { useLesson } from '@/composables/useLesson'
 import { lessonById } from '@/data/lessons'
 
-const { curriculum, state, isPassed, recordDrill, nextLesson, reset } = useLesson()
+const { curriculum, state, isPassed, recordDrill, scorerFor, clearedDrills, nextLesson, reset } =
+  useLesson()
 
 const first = curriculum[0]
 const second = curriculum[1]
@@ -101,5 +102,32 @@ describe('useLesson', () => {
     recordDrill('stacking-1', stacking.drills[0], 100)
 
     expect(state(stacking)).toBe('started')
+  })
+})
+
+describe('scorerFor', () => {
+  it('records a finished run against the lesson it was built for', () => {
+    const drillId = first.drills[0]
+
+    scorerFor(first.id)({ drillId, accuracy: 100 })
+
+    expect(clearedDrills(first)).toContain(drillId)
+  })
+
+  it('keeps the best accuracy, like recording by hand', () => {
+    const drillId = first.drills[0]
+    const score = scorerFor(first.id)
+
+    score({ drillId, accuracy: 100 })
+    score({ drillId, accuracy: 40 })
+
+    // Practising after clearing a gate must not take the gate back.
+    expect(clearedDrills(first)).toContain(drillId)
+  })
+
+  it('ignores a drill that is not in the lesson', () => {
+    scorerFor(first.id)({ drillId: second.drills[0], accuracy: 100 })
+
+    expect(clearedDrills(first)).toEqual([])
   })
 })

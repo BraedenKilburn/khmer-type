@@ -47,7 +47,7 @@ const toggleDark = useToggle(isDark)
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
-  max-width: 1200px;
+  max-width: var(--kt-measure-page);
   width: 100%;
   margin: 0 auto;
   padding: 1.5rem;

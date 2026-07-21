@@ -5,7 +5,7 @@ import { mount } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import App from '@/App.vue'
-import { router as appRouter } from '@/router'
+import { ROUTE, router as appRouter, titleFor } from '@/router'
 
 /**
  * A smoke test for the shell: every route mounts, and free practice is what a
@@ -82,5 +82,23 @@ describe('the app shell', () => {
 
     expect(wrapper.text()).toContain('Targeted practice')
     expect(wrapper.text()).toContain('Nothing recorded yet')
+  })
+})
+
+describe('the document title', () => {
+  it('names the page, so five pages are not five identical history entries', () => {
+    expect(titleFor({ title: 'Lessons' })).toBe('Lessons · Khmer Type')
+  })
+
+  it('falls back to the app name rather than rendering "undefined"', () => {
+    expect(titleFor({})).toBe('Khmer Type')
+  })
+
+  it('gives every named route a distinct title', () => {
+    const named = appRouter.options.routes.filter((route) => route.name)
+    const titles = named.map((route) => titleFor(route.meta ?? {}))
+
+    expect(named).toHaveLength(Object.keys(ROUTE).length)
+    expect(new Set(titles).size).toBe(named.length)
   })
 })

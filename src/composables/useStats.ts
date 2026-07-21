@@ -1,12 +1,7 @@
 import { computed } from 'vue'
 import { useStorage } from '@vueuse/core'
-import {
-  expectedSignAt,
-  recordAttempt,
-  weakestSigns,
-  type SignStats,
-  type WeaknessView,
-} from '@/lib/stats'
+import { recordAttempt, weakestSigns, type SignStats, type WeaknessView } from '@/lib/stats'
+import { expectedSignAt } from '@/lib/drillAnalysis'
 
 /**
  * Versioned, so the stored shape can change later without silently reading old

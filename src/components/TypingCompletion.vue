@@ -6,7 +6,8 @@ import { errorRate, hesitationMs, type SignStat } from '@/lib/stats'
 
 interface Props {
   kpm: number
-  kps: number | string
+  /** Rounded for display here rather than at the source — see the template. */
+  kps: number
   accuracy: number
   /**
    * The signs to practise, worst first — across every session, not just this
@@ -43,7 +44,7 @@ const visible = defineModel<boolean>(
         <span class="stat-label">kpm</span>
       </div>
       <div class="stat">
-        <span class="stat-value">{{ kps }}</span>
+        <span class="stat-value">{{ kps.toFixed(1) }}</span>
         <span class="stat-label">kps</span>
       </div>
       <div class="stat">

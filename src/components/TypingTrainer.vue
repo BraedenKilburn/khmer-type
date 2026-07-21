@@ -1,25 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed, useTemplateRef, watch } from 'vue'
-import { useDrills, sentences, type DrillOrder } from '@/composables/useDrills'
-import type { Drill } from '@/data/corpus'
+import { ref, onMounted, nextTick, useTemplateRef, watch } from 'vue'
+import { useDrills } from '@/composables/useDrills'
+import type { DrillOrder } from '@/lib/drillOrder'
+import { sentences, type Drill } from '@/data/corpus'
 import { useLayoutVariant } from '@/composables/useLayoutVariant'
-import { levelFromModifiers } from '@/lib/layoutVariant'
-import type { Level } from '@/data/khmerLayout'
-import { isActive, toRenderClusters } from '@/lib/clusters'
-import { accuracyFrom, tallyKeystrokes } from '@/lib/accuracy'
-import {
-  commitText,
-  emptySession,
-  rewind,
-  withoutLatinLetters,
-  type TypingSession,
-} from '@/lib/typingSession'
+import { useDrillRun } from '@/composables/useDrillRun'
+import { useKeystrokeIntake } from '@/composables/useKeystrokeIntake'
 import TypingCompletion from '@/components/TypingCompletion.vue'
 import SignStrip from '@/components/SignStrip.vue'
 import LayoutSetupPanel from '@/components/LayoutSetupPanel.vue'
 import LayoutVariantPicker from '@/components/LayoutVariantPicker.vue'
 import KhmerKeyboard from '@/components/KhmerKeyboard.vue'
 import { useKeyboardVisible } from '@/composables/useKeyboardVisible'
+import type { DrillScorer } from '@/composables/useLesson'
 import { useStats } from '@/composables/useStats'
 import type { SignStat } from '@/lib/stats'
 import Button from 'primevue/button'
@@ -30,78 +23,54 @@ interface Props {
   /** The drills to draw from. Defaults to free practice over the sentences. */
   pool?: Drill[]
   order?: DrillOrder
+  /**
+   * Who is keeping score, if anyone. A lesson passes one built from its own id
+   * — see `useLesson().scorerFor`; free practice passes none, which is how it
+   * says a run here counts towards nothing.
+   */
+  scorer?: DrillScorer
 }
 
 const props = withDefaults(defineProps<Props>(), { order: 'random' })
-
-/**
- * Reported when a drill is finished, for whoever is keeping score — a lesson
- * records it against its pass criteria; free practice ignores it.
- */
-const emit = defineEmits<{ complete: [{ drillId: string; accuracy: number; kpm: number }] }>()
 
 const { currentDrill, currentDrillId, position, setNextDrill } = useDrills({
   pool: () => props.pool ?? sentences(),
   order: props.order,
 })
 const { visible: isKeyboardVisible, toggle: toggleKeyboard } = useKeyboardVisible()
-const { recordKeystroke, startDrill, weakest } = useStats()
+const { weakest } = useStats()
+
+/**
+ * The run in progress: the session, the clocks, accuracy, and the per-sign
+ * record, behind one interface — see `@/composables/useDrillRun`. This
+ * component owns the browser events and the template, and nothing else.
+ */
+const {
+  renderClusters,
+  cursorClusterIndex,
+  activeCluster,
+  typedIntoActiveCluster,
+  nextCodePoint,
+  isComplete,
+  isStarted,
+  isWrongLayout,
+  accuracy,
+  kpm,
+  kps,
+  commit,
+  rewind,
+  reset,
+  dismissWrongLayout,
+} = useDrillRun(currentDrill)
 
 /** The heatmap is a thing you go and look at, not a thing on screen while typing. */
 const isStatsVisible = ref(false)
-
-/** Typed text, cursor, and the raw key sequence — see `@/lib/typingSession`. */
-const session = ref<TypingSession>(emptySession)
-const typedText = computed(() => session.value.typedText)
-const cursorIndex = computed(() => session.value.cursorIndex)
-
-/**
- * One entry per cluster, never split — see docs/adr/0001-clusters-are-atomic.md
- */
-const renderClusters = computed(() =>
-  toRenderClusters(currentDrill.value, typedText.value, cursorIndex.value),
-)
-
-/**
- * The cursor sits before the first cluster it has not passed. A cluster the
- * cursor is partway through is `active`, and the cursor renders before it
- * rather than inside it — splitting it would shatter the glyph.
- */
-const cursorClusterIndex = computed(() =>
-  renderClusters.value.findIndex(({ state }) => isActive(state) || state === 'untyped'),
-)
-
-/**
- * The cluster the cursor is inside, if it is inside one at all. Between clusters
- * there is nothing to decompose.
- */
-const activeCluster = computed(() => renderClusters.value.find(({ state }) => isActive(state)))
-
-/**
- * What the user has actually typed into the active cluster — which may not be
- * what the drill asked for. The sign strip compares the two to say which sign
- * went wrong, so it needs the text and not just how much of it there is.
- */
-const typedIntoActiveCluster = computed(() =>
-  activeCluster.value ? typedText.value.slice(activeCluster.value.start, cursorIndex.value) : '',
-)
-
-/**
- * The code point the drill expects next — what the on-screen keyboard points
- * at. One code point, not one sign: a subscript is two presses, and the key to
- * show is the one for the press being asked for right now.
- */
-const nextCodePoint = computed(() => currentDrill.value[cursorIndex.value])
 
 // ===============================
 // Handle Typing (hidden input)
 // ===============================
 
 const isFocused = ref(false)
-const startTime = ref<number | null>(null)
-const endTime = ref<number | null>(null)
-
-const isComplete = computed(() => cursorIndex.value === currentDrill.value.length)
 
 /**
  * The input the user actually types into: a real, labelled, focusable control
@@ -114,154 +83,19 @@ function focusTypingArea() {
   keyboardInputRef.value?.focus()
 }
 
-/** True between `compositionstart` and `compositionend`. */
-const isComposing = ref(false)
-
-/**
- * The physical key of the `keydown` in flight, held for the `beforeinput` that
- * follows it.
- *
- * `beforeinput` says what was produced but not which key produced it, and
- * `keydown` says the opposite; the layout can only be told apart from the pair.
- * `level` is `undefined` when the modifiers select nothing either table
- * records — see `levelFromModifiers`.
- */
-const pendingKey = ref<{ code: string; level?: Level }>()
 const { observeKeystroke } = useLayoutVariant()
 
 /**
- * Whether the user is being shown how to install a Khmer layout.
- *
- * Raised by a Latin letter, which means the user is typing on their Latin
- * layout and no drill has anything for them to match. It stays raised while
- * that is still true: the fix is a trip through system settings, which is
- * longer than any toast lives. A Khmer keystroke landing is the proof it
- * worked, so that is what lowers it.
+ * The browser event path — see `@/composables/useKeystrokeIntake`. Composition,
+ * paste refusal, and the `keydown`/`beforeinput` pairing that ADR-0003 detects
+ * the layout from all sit behind it; what arrives here is keystrokes.
  */
-const isWrongLayout = ref(false)
-
-/**
- * Fold committed text into the session — one code point from a keypress, a
- * whole sequence from an IME. Timing starts at the first keystroke that lands,
- * not at the first key that was refused.
- */
-function commit(text: string) {
-  if (!text || isComplete.value) return
-
-  const khmer = withoutLatinLetters(text)
-  if (khmer !== text) isWrongLayout.value = true
-  if (!khmer) return
-
-  isWrongLayout.value = false
-
-  startTime.value ??= Date.now()
-
-  /*
-   * Recorded per code point, before the cursor moves past it — a composed IME
-   * commit is several keystrokes however it arrived, per ADR-0002, and each one
-   * is an attempt at whichever sign it landed in.
-   */
-  for (const keystroke of khmer) {
-    const cursor = session.value.cursorIndex
-    if (cursor >= currentDrill.value.length) break
-    recordKeystroke(currentDrill.value, cursor, keystroke)
-    session.value = commitText(session.value, currentDrill.value, keystroke)
-  }
-
-  if (isComplete.value) endTime.value = Date.now()
-}
-
-/**
- * Backspace is handled here rather than through `beforeinput`: the input is
- * always empty, so there is nothing for the browser to delete and no
- * `deleteContentBackward` to listen for. Preventing the default also stops the
- * key navigating the page back.
- *
- * While an IME is composing, Backspace belongs to the composition buffer — the
- * user is editing a sequence they have not committed yet, and rewinding the
- * drill underneath them would desync the two.
- */
-function handleKeydown(event: KeyboardEvent) {
-  if (event.isComposing || isComposing.value) return
-
-  pendingKey.value = { code: event.code, level: levelFromModifiers(event.shiftKey, event.altKey) }
-
-  if (event.key === 'Backspace') {
-    event.preventDefault()
-    session.value = rewind(session.value)
-    return
-  }
-
-  // Enter would submit an ancestor form. Space is left alone: a focused input
-  // swallows it rather than scrolling the page, and preventing the default
-  // here would suppress the `beforeinput` that carries the space into a drill.
-  if (event.key === 'Enter') event.preventDefault()
-}
-
-/**
- * Composition commits at `compositionend`, never here — recognised by input
- * type rather than by `isComposing`, which is not reliable at the boundary.
- * WebKit fires `compositionend` before the final `beforeinput`, so the flag has
- * already cleared by the time the composed text arrives and the sequence would
- * be counted a second time.
- */
-const COMPOSITION_INPUT_TYPES = ['insertCompositionText', 'insertFromComposition']
-
-/**
- * Direct entry. Prevented so the input's value stays empty, which is what keeps
- * the browser from rendering its own text over the drill.
- *
- * Paste is refused: a drill filled in wholesale is not a typing run, and
- * counting it as keystrokes would report a speed nobody typed.
- */
-function handleBeforeInput(payload: Event) {
-  // Vue types every `beforeinput` listener as `Event`; the DOM only ever
-  // dispatches `InputEvent` here.
-  const event = payload as InputEvent
-  if (event.isComposing || COMPOSITION_INPUT_TYPES.includes(event.inputType)) return
-
-  event.preventDefault()
-
-  if (event.inputType.startsWith('insertFrom')) return
-  if (!event.inputType.startsWith('insert')) return
-
-  /*
-   * The physical key from `keydown`, paired with the text it just produced —
-   * the evidence that tells NiDA from Apple's variant. Only direct entry
-   * carries it: a composed sequence has no single key behind it.
-   */
-  const key = pendingKey.value
-  if (key?.level && event.data) observeKeystroke(key.code, key.level, event.data)
-
-  commit(event.data ?? '')
-}
-
-function handleCompositionStart() {
-  isComposing.value = true
-}
-
-/**
- * The input has to stay empty or the browser renders its own text over the
- * drill. Direct entry is already prevented, so anything that reaches here is
- * composed text the browser inserted on its own — including, on WebKit, a
- * composition that arrives after `compositionend` has run its clear.
- */
-function handleInput() {
-  if (isComposing.value) return
-  if (keyboardInputRef.value?.value) keyboardInputRef.value.value = ''
-}
-
-/**
- * The composed sequence lands as one commit and is split back into its
- * keystrokes — `ស្វា` is four of them however the IME delivered it, per
- * docs/adr/0002-speed-counts-keystrokes.md. The in-flight buffer was written
- * into the input's value (composition cannot be prevented), so clear it.
- */
-function handleCompositionEnd(event: CompositionEvent) {
-  isComposing.value = false
-  commit(event.data)
-  if (keyboardInputRef.value) keyboardInputRef.value.value = ''
-}
+const intake = useKeystrokeIntake({
+  element: keyboardInputRef,
+  onCommit: commit,
+  onRewind: rewind,
+  onKeystroke: observeKeystroke,
+})
 
 onMounted(() => {
   nextTick(() => focusTypingArea())
@@ -285,27 +119,9 @@ watch(isComplete, (isCompleted) => {
 
   weakestSigns.value = weakest()
   if (currentDrillId.value) {
-    emit('complete', { drillId: currentDrillId.value, accuracy: accuracy.value, kpm: kpm.value })
+    props.scorer?.({ drillId: currentDrillId.value, accuracy: accuracy.value })
   }
 })
-
-// Speed is measured in keystrokes, not clusters — see docs/adr/0002
-const kpm = computed(() => {
-  if (!startTime.value || !endTime.value) return 0
-  const minutes = (endTime.value - startTime.value) / 60000
-  return Math.round(currentDrill.value.length / minutes)
-})
-
-const kps = computed(() => {
-  if (!startTime.value || !endTime.value) return 0
-  const seconds = (endTime.value - startTime.value) / 1000
-  return (currentDrill.value.length / seconds).toFixed(1)
-})
-
-// Judged per keystroke, so a corrected typo still costs — see @/lib/accuracy
-const accuracy = computed(() =>
-  accuracyFrom(tallyKeystrokes(currentDrill.value, session.value.keystrokes)),
-)
 
 /**
  * The dialog stays on screen through its leave transition, so "Try Again" can
@@ -318,11 +134,8 @@ function handleRestart() {
 }
 
 function resetTyping() {
-  session.value = emptySession
-  startTime.value = null
-  endTime.value = null
-  startDrill()
   setNextDrill()
+  reset()
   nextTick(() => focusTypingArea())
 }
 </script>
@@ -343,11 +156,11 @@ function resetTyping() {
       aria-describedby="drill-text"
       @focus="isFocused = true"
       @blur="isFocused = false"
-      @keydown="handleKeydown"
-      @beforeinput="handleBeforeInput"
-      @input="handleInput"
-      @compositionstart="handleCompositionStart"
-      @compositionend="handleCompositionEnd"
+      @keydown="intake.keydown"
+      @beforeinput="intake.beforeinput"
+      @input="intake.input"
+      @compositionstart="intake.compositionstart"
+      @compositionend="intake.compositionend"
     />
     <div class="typing-area" id="drill-text" lang="km">
       <template v-for="(cluster, index) in renderClusters" :key="index">
@@ -366,7 +179,7 @@ function resetTyping() {
     anything that reserved space above would either shift the line the user is
     reading or hold a gap open for a problem most users never hit.
   -->
-  <LayoutSetupPanel v-if="isWrongLayout" @dismiss="isWrongLayout = false" />
+  <LayoutSetupPanel v-if="isWrongLayout" @dismiss="dismissWrongLayout" />
   <div class="controls">
     <!--
       Only where the order means something: a lesson is a list to work through,
@@ -379,7 +192,7 @@ function resetTyping() {
     <Button
       icon="pi pi-refresh"
       @click="resetTyping"
-      :disabled="!isComplete && cursorIndex > 0"
+      :disabled="!isComplete && isStarted"
       severity="secondary"
       variant="text"
       aria-label="New drill"
@@ -466,7 +279,7 @@ function resetTyping() {
  */
 .desktop-notice {
   display: none;
-  max-width: 1200px;
+  max-width: var(--kt-measure-page);
   width: 100%;
   color: var(--kt-sub);
   font-size: 0.75rem;
@@ -490,7 +303,7 @@ function resetTyping() {
  */
 .typing-container {
   position: relative;
-  max-width: 860px;
+  max-width: var(--kt-measure-drill);
   width: 100%;
   line-height: 1.9;
   /* Padding with nothing drawn on it: the whole block focuses the drill on

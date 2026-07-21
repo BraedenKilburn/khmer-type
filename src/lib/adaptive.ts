@@ -71,28 +71,43 @@ export function byWeakness(
 }
 
 /**
- * Draw one drill, weighted.
+ * Draw one drill, weighted, and say *where* it was drawn from.
+ *
+ * An index rather than the drill itself: the caller is picking out of a slice
+ * of a larger pool and has to map the answer back onto it. Handing back the
+ * drill would leave it searching the slice for something it had just supplied.
  *
  * `random` is injected so the draw can be tested rather than trusted — a
  * sampler that quietly favours the first entry looks fine until someone counts.
  */
+export function sampleWeightedIndex(
+  drills: readonly Drill[],
+  tags: Record<string, DrillTags>,
+  stats: SignStats,
+  random: () => number = Math.random,
+): number | undefined {
+  if (!drills.length) return undefined
+
+  const weights = drills.map((drill) => (tags[drill.id] ? drillWeight(tags[drill.id], stats) : 0.1))
+  const total = weights.reduce((sum, weight) => sum + weight, 0)
+  if (total <= 0) return Math.floor(random() * drills.length)
+
+  let remaining = random() * total
+  for (const [index, weight] of weights.entries()) {
+    remaining -= weight
+    if (remaining < 0) return index
+  }
+
+  return drills.length - 1
+}
+
+/** The drill `sampleWeightedIndex` drew. */
 export function sampleWeighted(
   drills: readonly Drill[],
   tags: Record<string, DrillTags>,
   stats: SignStats,
   random: () => number = Math.random,
 ): Drill | undefined {
-  if (!drills.length) return undefined
-
-  const weights = drills.map((drill) => (tags[drill.id] ? drillWeight(tags[drill.id], stats) : 0.1))
-  const total = weights.reduce((sum, weight) => sum + weight, 0)
-  if (total <= 0) return drills[Math.floor(random() * drills.length)]
-
-  let remaining = random() * total
-  for (const [index, weight] of weights.entries()) {
-    remaining -= weight
-    if (remaining < 0) return drills[index]
-  }
-
-  return drills[drills.length - 1]
+  const index = sampleWeightedIndex(drills, tags, stats, random)
+  return index === undefined ? undefined : drills[index]
 }

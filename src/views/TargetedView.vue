@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ROUTE } from '@/router'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import TypingTrainer from '@/components/TypingTrainer.vue'
@@ -29,8 +30,8 @@ const pool = computed(() => [...corpus])
     </p>
     <p v-else class="targets">
       Nothing recorded yet. Finish a drill in
-      <RouterLink :to="{ name: 'practice' }">free practice</RouterLink> or a
-      <RouterLink :to="{ name: 'lessons' }">lesson</RouterLink> and this has something to aim at.
+      <RouterLink :to="{ name: ROUTE.practice }">free practice</RouterLink> or a
+      <RouterLink :to="{ name: ROUTE.lessons }">lesson</RouterLink> and this has something to aim at.
     </p>
   </header>
 
@@ -39,7 +40,7 @@ const pool = computed(() => [...corpus])
 
 <style scoped>
 .targeted-header {
-  max-width: 860px;
+  max-width: var(--kt-measure-drill);
   width: 100%;
 
   h2 {

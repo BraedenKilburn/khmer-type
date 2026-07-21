@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ROUTE } from '@/router'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useLesson } from '@/composables/useLesson'
@@ -34,7 +35,7 @@ const summary = computed(() => `${passedCount.value} of ${curriculum.length} les
 
     <ol class="lessons">
       <li v-for="lesson in curriculum" :key="lesson.id">
-        <RouterLink :to="{ name: 'lesson', params: { id: lesson.id } }" :class="state(lesson)">
+        <RouterLink :to="{ name: ROUTE.lesson, params: { id: lesson.id } }" :class="state(lesson)">
           <div class="line">
             <h3>{{ lesson.title }}</h3>
             <span class="badge">{{ STATE_LABEL[state(lesson)] }}</span>
@@ -54,7 +55,7 @@ const summary = computed(() => `${passedCount.value} of ${curriculum.length} les
 
 <style scoped>
 .lesson-map {
-  max-width: 1200px;
+  max-width: var(--kt-measure-page);
   width: 100%;
 
   header {
