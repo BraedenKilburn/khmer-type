@@ -2,6 +2,15 @@ import { ref, computed } from 'vue'
 import { corpus } from '@/data/corpus'
 
 /**
+ * Sign decomposition, the unit beneath the cluster.
+ *
+ * Re-exported here because the strip, the on-screen keyboard, and the per-sign
+ * stats all reach for it through the drills they are describing; it lives in
+ * `@/lib/signs` with the rest of the pure text logic.
+ */
+export { toSigns } from '@/lib/signs'
+
+/**
  * Remove Zero Width Space (ZWSP) code points. They carry no keystroke, so a
  * drill that contains them would be impossible to finish.
  */

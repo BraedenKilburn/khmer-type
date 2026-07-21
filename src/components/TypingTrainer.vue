@@ -12,6 +12,7 @@ import {
   type TypingSession,
 } from '@/lib/typingSession'
 import TypingCompletion from '@/components/TypingCompletion.vue'
+import SignStrip from '@/components/SignStrip.vue'
 import Button from 'primevue/button'
 
 const { currentDrill, setNextDrill } = useDrills()
@@ -36,6 +37,12 @@ const renderClusters = computed(() =>
 const cursorClusterIndex = computed(() =>
   renderClusters.value.findIndex(({ state }) => state === 'active' || state === 'untyped'),
 )
+
+/**
+ * The cluster the cursor is inside, if it is inside one at all — `active` is
+ * exactly that state. Between clusters there is nothing to decompose.
+ */
+const activeCluster = computed(() => renderClusters.value.find(({ state }) => state === 'active'))
 
 // ===============================
 // Handle Typing (hidden input)
@@ -248,6 +255,14 @@ function resetTyping() {
         <span :class="`cluster-${cluster.state}`">{{ cluster.text }}</span>
       </template>
     </div>
+    <!--
+      Per-sign progress inside the cluster the typing line has to render whole —
+      see docs/adr/0001-clusters-are-atomic.md.
+    -->
+    <SignStrip
+      :cluster="activeCluster?.text"
+      :typed-code-units="activeCluster ? cursorIndex - activeCluster.start : 0"
+    />
   </div>
   <div class="controls">
     <Button

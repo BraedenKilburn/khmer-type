@@ -23,6 +23,14 @@ export type ClusterState = 'correct' | 'incorrect' | 'active' | 'untyped'
 export interface RenderCluster {
   text: string
   state: ClusterState
+  /**
+   * Where the cluster starts in the drill, in code units.
+   *
+   * The sign strip needs it: it decomposes the cluster the cursor is inside,
+   * and "how far into this cluster" is `cursor - start`. Computing it a second
+   * time by re-walking the clusters is how the two would drift apart.
+   */
+  start: number
 }
 
 /**
@@ -65,8 +73,9 @@ export function toRenderClusters(drill: string, typed: string, cursor: number): 
   return toClusters(drill).map((text) => {
     const end = start + text.length
     const state = classify(text, typed.slice(start, end), cursor - start)
+    const cluster = { text, state, start }
     start = end
-    return { text, state }
+    return cluster
   })
 }
 
