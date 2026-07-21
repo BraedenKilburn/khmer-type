@@ -95,7 +95,7 @@ describe('describeSign', () => {
 describe('toSignProgress', () => {
   it('marks the sign under the cursor current and the rest pending', () => {
     // `ស` typed, cursor sitting on the COENG of `្វ`.
-    expect(toSignProgress('ស្វា', 1).map(({ state }) => state)).toEqual([
+    expect(toSignProgress('ស្វា', 'ស').map(({ state }) => state)).toEqual([
       'done',
       'current',
       'pending',
@@ -104,7 +104,7 @@ describe('toSignProgress', () => {
 
   it('keeps a subscript current between its two keystrokes', () => {
     // COENG pressed, its consonant not yet — the moment the naming is for.
-    expect(toSignProgress('ស្វា', 2).map(({ state }) => state)).toEqual([
+    expect(toSignProgress('ស្វា', 'ស្').map(({ state }) => state)).toEqual([
       'done',
       'current',
       'pending',
@@ -112,7 +112,7 @@ describe('toSignProgress', () => {
   })
 
   it('advances once the subscript is complete', () => {
-    expect(toSignProgress('ស្វា', 3).map(({ state }) => state)).toEqual([
+    expect(toSignProgress('ស្វា', 'ស្វ').map(({ state }) => state)).toEqual([
       'done',
       'done',
       'current',
@@ -120,11 +120,65 @@ describe('toSignProgress', () => {
   })
 
   it('marks every sign done at the end of the cluster', () => {
-    expect(toSignProgress('ស្វា', 4).map(({ state }) => state)).toEqual(['done', 'done', 'done'])
+    expect(toSignProgress('ស្វា', 'ស្វា').map(({ state }) => state)).toEqual(['done', 'done', 'done'])
+  })
+
+  /*
+   * The strip is the only place a mistake inside a cluster can surface before
+   * the cluster ends — the typing line renders the cluster whole and cannot
+   * mark part of it. These pin the feedback down at the keystroke it happens.
+   */
+  it('marks the sign a wrong keystroke landed in, immediately', () => {
+    // `ស` correct, then `ត` where the subscript's COENG was wanted.
+    expect(toSignProgress('ស្វា', 'សត').map(({ state }) => state)).toEqual([
+      'done',
+      'wrong',
+      'pending',
+    ])
+  })
+
+  it('blames the sign the wrong key landed in, not the cluster', () => {
+    /*
+     * The base consonant is wrong on the very first keystroke. The cursor has
+     * moved on to the subscript, so that one is `current` — the strip reports
+     * the mistake and where the next key goes at the same time.
+     */
+    expect(toSignProgress('ស្វា', 'ក').map(({ state }) => state)).toEqual([
+      'wrong',
+      'current',
+      'pending',
+    ])
+  })
+
+  it('catches a subscript whose consonant is wrong, on that keystroke', () => {
+    // COENG landed correctly, then the wrong consonant under it. The cursor has
+    // already moved on to the vowel, so that one reads as current.
+    expect(toSignProgress('ស្វា', 'ស្ត').map(({ state }) => state)).toEqual([
+      'done',
+      'wrong',
+      'current',
+    ])
+  })
+
+  it('does not call a half-typed subscript wrong for being unfinished', () => {
+    // COENG pressed, its consonant not yet: incomplete is not incorrect.
+    expect(toSignProgress('ស្វា', 'ស្').map(({ state }) => state)).toEqual([
+      'done',
+      'current',
+      'pending',
+    ])
+  })
+
+  it('keeps an earlier mistake marked once the cursor has moved past it', () => {
+    expect(toSignProgress('ស្វា', 'កូ').map(({ state }) => state)).toEqual([
+      'wrong',
+      'wrong',
+      'pending',
+    ])
   })
 
   it('carries the display form alongside the typed one', () => {
-    expect(toSignProgress('សូ', 1)).toEqual([
+    expect(toSignProgress('សូ', 'ស')).toEqual([
       { sign: 'ស', display: 'ស', state: 'done' },
       { sign: 'ូ', display: '◌ូ', state: 'current' },
     ])

@@ -5,7 +5,7 @@ import type { Drill } from '@/data/corpus'
 import { useLayoutVariant } from '@/composables/useLayoutVariant'
 import { levelFromModifiers } from '@/lib/layoutVariant'
 import type { Level } from '@/data/khmerLayout'
-import { toRenderClusters } from '@/lib/clusters'
+import { isActive, toRenderClusters } from '@/lib/clusters'
 import { accuracyFrom, tallyKeystrokes } from '@/lib/accuracy'
 import {
   commitText,
@@ -68,14 +68,23 @@ const renderClusters = computed(() =>
  * rather than inside it — splitting it would shatter the glyph.
  */
 const cursorClusterIndex = computed(() =>
-  renderClusters.value.findIndex(({ state }) => state === 'active' || state === 'untyped'),
+  renderClusters.value.findIndex(({ state }) => isActive(state) || state === 'untyped'),
 )
 
 /**
- * The cluster the cursor is inside, if it is inside one at all — `active` is
- * exactly that state. Between clusters there is nothing to decompose.
+ * The cluster the cursor is inside, if it is inside one at all. Between clusters
+ * there is nothing to decompose.
  */
-const activeCluster = computed(() => renderClusters.value.find(({ state }) => state === 'active'))
+const activeCluster = computed(() => renderClusters.value.find(({ state }) => isActive(state)))
+
+/**
+ * What the user has actually typed into the active cluster — which may not be
+ * what the drill asked for. The sign strip compares the two to say which sign
+ * went wrong, so it needs the text and not just how much of it there is.
+ */
+const typedIntoActiveCluster = computed(() =>
+  activeCluster.value ? typedText.value.slice(activeCluster.value.start, cursorIndex.value) : '',
+)
 
 /**
  * The code point the drill expects next — what the on-screen keyboard points
@@ -350,10 +359,7 @@ function resetTyping() {
       Per-sign progress inside the cluster the typing line has to render whole —
       see docs/adr/0001-clusters-are-atomic.md.
     -->
-    <SignStrip
-      :cluster="activeCluster?.text"
-      :typed-code-units="activeCluster ? cursorIndex - activeCluster.start : 0"
-    />
+    <SignStrip :cluster="activeCluster?.text" :typed="typedIntoActiveCluster" />
   </div>
   <!--
     Below the typing container, never above it: the panel appears mid-drill, and
@@ -424,13 +430,32 @@ function resetTyping() {
 .controls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
 
   .position {
-    margin: 0;
-    font-size: 0.8rem;
-    color: var(--p-text-secondary);
+    margin: 0 0.75rem 0 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: var(--kt-faint);
     font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * The controls sit below the drill and must not compete with it: no fills, no
+   * borders, faint until pointed at. They are still full-size hit targets — it
+   * is the ink that is quiet, not the button.
+   */
+  :deep(.p-button) {
+    color: var(--kt-faint);
+
+    &:hover:not(:disabled) {
+      color: var(--kt-accent);
+      background-color: transparent;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+    }
   }
 }
 
@@ -442,12 +467,11 @@ function resetTyping() {
 .desktop-notice {
   display: none;
   max-width: 1200px;
-  width: 95%;
-  padding: 12px 16px;
-  border-radius: 12px;
-  background-color: var(--p-surface-secondary);
-  color: var(--p-text-secondary);
-  font-size: 0.9rem;
+  width: 100%;
+  color: var(--kt-sub);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
   text-align: center;
 }
 
@@ -457,22 +481,33 @@ function resetTyping() {
   }
 }
 
+/*
+ * No card, no border, no fill.
+ *
+ * The drill used to sit in a rounded panel, which drew a box around the one
+ * thing on the page that does not need pointing at. What remains is the text on
+ * the page itself; the space around it is the only framing it gets.
+ */
 .typing-container {
   position: relative;
-  padding: 30px;
-  background-color: var(--p-surface-secondary);
-  border-radius: 12px;
-  max-width: 1200px;
-  width: 95%;
-  line-height: 2;
+  max-width: 860px;
+  width: 100%;
+  line-height: 1.9;
+  /* Padding with nothing drawn on it: the whole block focuses the drill on
+     click, and losing the card should not shrink that target to the glyphs. */
+  padding: 1rem 0;
   cursor: text;
-  transition:
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
 
-  &.is-focused {
-    border-color: var(--p-primary-color);
-    box-shadow: 0 0 12px var(--p-primary-color);
+  /*
+   * Focus is signalled by dimming the line when it is *absent*, not by
+   * decorating it when present — an unfocused drill is the state worth
+   * flagging, because keystrokes go nowhere. The caret already disappears with
+   * focus; this makes it legible at a glance rather than only on inspection.
+   */
+  transition: opacity 0.15s ease;
+
+  &:not(.is-focused) .typing-area {
+    opacity: 0.55;
   }
 
   /*
@@ -503,7 +538,10 @@ function resetTyping() {
 
   .typing-area {
     outline: none;
-    font-size: 2em;
+    /* Large enough that a stacked cluster is legible without leaning in, and
+       capped so a long drill still fits the measure above. */
+    font-size: clamp(2rem, 4.5vw, 3rem);
+    text-align: center;
 
     span {
       /*
@@ -514,54 +552,85 @@ function resetTyping() {
        */
       padding-bottom: 0.2em;
 
+      /*
+       * Three inks, not four: what you have typed is the page's own text
+       * colour, what you have not is the muted grey, and a mistake is the one
+       * red on the site. Nothing is tinted for being merely correct — being
+       * correct is the resting state.
+       */
       &.cluster-correct {
-        color: var(--p-text-primary);
+        color: var(--kt-text);
       }
 
       &.cluster-incorrect {
-        color: var(--p-text-error);
+        color: var(--kt-error);
         font-weight: bold;
+        border-bottom: 2px solid var(--kt-error);
       }
 
       /*
-       * A cluster the cursor is partway through. Tint only — a colour change
-       * here would read as a judgement on a cluster that isn't finished yet,
-       * and the glyph must keep rendering normally.
+       * A cluster the cursor is partway through, marked with a rule beneath
+       * rather than a wash behind. A colour change here would read as a
+       * judgement on a cluster that isn't finished yet, and a fill sat over the
+       * subscripts — the glyph has to keep rendering normally, which for Khmer
+       * means leaving the space under the baseline alone.
        */
       &.cluster-active {
-        color: var(--p-text-primary);
-        background-color: color-mix(in srgb, var(--p-primary-color) 25%, transparent);
-        border-radius: 3px;
+        color: var(--kt-text);
+        border-bottom: 2px solid var(--kt-accent);
+      }
+
+      /*
+       * A cluster the cursor is still inside that has already gone wrong. The
+       * rule turns red the moment the bad keystroke lands rather than when the
+       * cluster ends — the glyph itself stays the drill's own colour, because
+       * what is drawn here is the target, not the mistake, and reddening it
+       * would say the thing on screen is wrong when it is what to aim for.
+       * Which sign was fumbled is the sign strip's job.
+       */
+      &.cluster-active-incorrect {
+        color: var(--kt-text);
+        border-bottom: 2px solid var(--kt-error);
       }
 
       &.cluster-untyped {
-        color: var(--p-text-primary);
-        opacity: 0.5;
+        color: var(--kt-untyped);
       }
     }
 
+    /* The caret: a thin bar in the accent, blinking on the step so it reads as
+       a caret rather than as a pulse. */
     .cursor {
       display: inline-block;
       padding-bottom: 0;
-      width: 3px;
+      width: 2px;
       height: 1em;
-      background-color: var(--p-primary-color);
+      background-color: var(--kt-accent);
       margin-left: 1px;
       margin-right: 1px;
       vertical-align: middle;
-      animation: blink 1s infinite;
+      animation: blink 1s step-end infinite;
     }
   }
 }
 
 @keyframes blink {
   0%,
-  100% {
+  49% {
     opacity: 1;
   }
 
-  50% {
-    opacity: 0;
+  50%,
+  100% {
+    opacity: 0.25;
+  }
+}
+
+/* A blinking caret is a motion effect like any other, and it sits at the exact
+   spot the eye is fixed on. */
+@media (prefers-reduced-motion: reduce) {
+  .typing-container .typing-area .cursor {
+    animation: none;
   }
 }
 </style>

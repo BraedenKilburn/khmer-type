@@ -18,7 +18,18 @@ const KHMER_CONSONANT = /^[ក-អ]/
 
 const segmenter = new Intl.Segmenter('km', { granularity: 'grapheme' })
 
-export type ClusterState = 'correct' | 'incorrect' | 'active' | 'untyped'
+export type ClusterState = 'correct' | 'incorrect' | 'active' | 'active-incorrect' | 'untyped'
+
+/**
+ * True while the cursor is still inside the cluster, right or wrong so far.
+ *
+ * The caret's position and the sign strip's subject both follow the cursor, not
+ * the verdict — a cluster that has already gone wrong is still the one being
+ * typed. Kept here so the two callers cannot drift on which states count.
+ */
+export function isActive(state: ClusterState): boolean {
+  return state === 'active' || state === 'active-incorrect'
+}
 
 export interface RenderCluster {
   text: string
@@ -63,9 +74,12 @@ export function toClusters(drill: string): string[] {
 /**
  * Bucket each cluster of a drill against what has been typed so far.
  *
- * A cluster the cursor sits inside is `active` as a whole — never part-correct.
+ * A cluster the cursor sits inside is judged as a whole — never part-correct.
  * Colouring a partial cluster would put a style boundary mid-glyph, which is
- * the exact shattering this module exists to prevent.
+ * the exact shattering this module exists to prevent. `active-incorrect` is how
+ * a mistake still surfaces immediately: the whole cluster is marked as having
+ * gone wrong the keystroke it goes wrong, and the sign strip — which is outside
+ * the shaped run and free to style each sign — says which sign it was.
  */
 export function toRenderClusters(drill: string, typed: string, cursor: number): RenderCluster[] {
   let start = 0
@@ -85,6 +99,14 @@ export function toRenderClusters(drill: string, typed: string, cursor: number): 
  */
 function classify(text: string, typed: string, keystrokesInto: number): ClusterState {
   if (keystrokesInto >= text.length) return typed === text ? 'correct' : 'incorrect'
-  if (keystrokesInto > 0) return 'active'
+  /*
+   * Judged against the prefix the cursor has reached, not the whole cluster —
+   * otherwise every cluster would read as wrong until its last keystroke landed.
+   */
+  if (keystrokesInto > 0) {
+    return typed.slice(0, keystrokesInto) === text.slice(0, keystrokesInto)
+      ? 'active'
+      : 'active-incorrect'
+  }
   return 'untyped'
 }

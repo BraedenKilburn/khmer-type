@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toClusters, toRenderClusters } from '@/lib/clusters'
+import { isActive, toClusters, toRenderClusters } from '@/lib/clusters'
 import { corpus } from '@/data/corpus'
 
 describe('toClusters', () => {
@@ -110,6 +110,30 @@ describe('toRenderClusters', () => {
       expect(stacked, `cursor ${cursor}`).toBeDefined()
       expect(stacked!.state, `cursor ${cursor}`).toBe('active')
     }
+  })
+
+  /*
+   * The cluster still cannot be part-coloured — ADR-0001 stands — but it can say
+   * "something in here is already wrong" the keystroke it becomes true, instead
+   * of waiting for the cluster to finish. The sign strip says which sign.
+   */
+  it('flags a stacked cluster as gone-wrong while the cursor is still inside it', () => {
+    // ស្វា spans [3, 7). Get its subscript consonant wrong at cursor 6.
+    const typed = 'សូម' + 'ស្ត'
+    const rendered = toRenderClusters(drill, typed, typed.length)
+    expect(rendered.find((c) => c.text === 'ស្វា')!.state).toBe('active-incorrect')
+  })
+
+  it('keeps a gone-wrong cluster active so the caret and strip stay on it', () => {
+    const typed = 'សូម' + 'ស្ត'
+    const rendered = toRenderClusters(drill, typed, typed.length)
+    expect(isActive(rendered.find((c) => c.text === 'ស្វា')!.state)).toBe(true)
+  })
+
+  it('does not flag a cluster whose typed prefix is still correct', () => {
+    const typed = 'សូម' + 'ស្'
+    const rendered = toRenderClusters(drill, typed, typed.length)
+    expect(rendered.find((c) => c.text === 'ស្វា')!.state).toBe('active')
   })
 
   it('marks the whole stacked cluster incorrect when a keystroke inside it was wrong', () => {

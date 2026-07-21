@@ -168,7 +168,7 @@ export function describeSign(sign: string): string {
   }
 }
 
-export type SignState = 'done' | 'current' | 'pending'
+export type SignState = 'done' | 'current' | 'wrong' | 'pending'
 
 export interface SignProgress {
   /** The sign itself, as typed — `្វ`, not `◌្វ`. */
@@ -179,22 +179,40 @@ export interface SignProgress {
 }
 
 /**
- * Walk a cluster's signs against how far into it the cursor has advanced.
+ * Walk a cluster's signs against what has actually been typed into it.
  *
- * `typedCodeUnits` is a code unit offset, not a sign index: the cursor moves one
- * keystroke at a time and a subscript takes two of them. A sign the cursor is
- * partway through — COENG pressed, consonant not yet — is still `current`,
- * which is exactly the moment the strip's naming earns its place.
+ * Takes the typed text rather than a count of it, because position alone cannot
+ * answer the question the strip exists to answer. The typing line cannot mark an
+ * error inside a cluster — splitting a shaped run is the one thing
+ * docs/adr/0001-clusters-are-atomic.md forbids — so until the cluster is
+ * finished, this is the *only* place a learner can be told that the keystroke
+ * they just made was wrong, and which of the three or four signs it landed in.
+ *
+ * `typed` is the cluster's own slice of the drill's typed text, so its length
+ * doubles as the cursor offset: the cursor moves one keystroke at a time and a
+ * subscript takes two of them. A sign the cursor is partway through — COENG
+ * pressed, consonant not yet — is still `current` as long as what has landed
+ * matches, which is exactly the moment the strip's naming earns its place.
  */
-export function toSignProgress(cluster: string, typedCodeUnits: number): SignProgress[] {
+export function toSignProgress(cluster: string, typed: string): SignProgress[] {
   let consumed = 0
 
   return toSigns(cluster).map((sign) => {
     const start = consumed
     consumed += sign.length
 
-    const state: SignState =
-      consumed <= typedCodeUnits ? 'done' : start <= typedCodeUnits ? 'current' : 'pending'
+    /*
+     * Only the part of this sign the cursor has actually reached. Comparing the
+     * whole sign would call a half-typed subscript wrong for not being finished.
+     */
+    const typedHere = typed.slice(start, consumed)
+    const expected = sign.slice(0, typedHere.length)
+
+    let state: SignState
+    if (typedHere !== expected) state = 'wrong'
+    else if (consumed <= typed.length) state = 'done'
+    else if (start <= typed.length) state = 'current'
+    else state = 'pending'
 
     return { sign, display: displaySign(sign), state }
   })
