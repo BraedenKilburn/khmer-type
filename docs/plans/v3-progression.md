@@ -29,9 +29,15 @@ So v3 is **not** primarily an engineering task. It is a content authoring task w
 
 ---
 
-## Task 1 — Feature tagging (scripted)
+## Task 1 — Feature tagging (scripted) ✅
 
-**New:** `scripts/tag-drills.ts`
+**New:** `scripts/tag-drills.ts`, `src/lib/drillTags.ts`, generated `src/data/drillTags.ts`
+
+**Shipped:** `npm run tag-drills` walks the corpus and commits the tags. The
+classification is narrower than the table below in one place: the diacritic
+range here runs to U+17DD and sweeps up `។` `៕` `៖` `៛`, which are punctuation
+and a currency sign. `signKind` classifies those as symbols instead — giving
+them a dotted circle to combine with would be nonsense.
 
 Auto-classify every sentence by Unicode range. This is cheap, deterministic, and worth doing first so the gap is measurable rather than guessed:
 
@@ -52,7 +58,21 @@ Commit the generated tags rather than computing at runtime. The corpus is static
 
 ---
 
-## Task 2 — Author beginner content
+## Task 2 — Author beginner content — ⚠️ half done
+
+**Shipped:** 103 generated key-location exercises (`e001`–`e103`) covering all
+33 consonants in their traditional vargas, every dependent vowel sign
+individually, twelve stacking patterns one at a time, and deliberate coverage
+for the ten letters the sentences barely use. The corpus now has 27 drills of
+base consonants alone, where it had none, and 143 with no stacking.
+
+**Still open, and still yours:** everything with *meaning*. The exercises are
+sequences and say so; they make no claim to be words. Short real sentences at
+the bottom of the difficulty range, and natural phrasing a beginner would
+actually want to type, are the part that cannot be generated — an agent filling
+that in unsupervised produces plausible-looking wrong Khmer, which is worse than
+an empty corpus slot.
+
 
 **This is the real work.** The corpus needs roughly 80–120 new short drills covering the bottom of the curriculum, which currently does not exist:
 
@@ -68,9 +88,20 @@ Drills at this level are not sentences and should not pretend to be. A lesson ca
 
 ---
 
-## Task 3 — Lesson engine
+## Task 3 — Lesson engine ✅
 
 **New:** `src/data/lessons.ts`, `src/composables/useLesson.ts`
+
+**Shipped:** 21 lessons — seven consonant groups, one crossing drill, four vowel
+lessons, four stacking lessons, rare letters, mixed review, and three sentence
+tiers cut from the difficulty ranking at its bottom, middle, and top. Each
+lesson after the first ends with a drill from an earlier one.
+
+**One correction:** `passCriteria` takes `minKpm`, not `minCpm`. A stacked
+cluster is one glyph and several keystrokes, so characters-per-minute would
+measure the script rather than the typing — see
+[ADR-0002](../adr/0002-speed-counts-keystrokes.md). It is left unset, per the
+gate-on-accuracy rule below.
 
 ```ts
 export interface Lesson {
@@ -97,7 +128,16 @@ Persist progress via the same versioned `localStorage` approach from v2's `useSt
 
 ---
 
-## Task 4 — Adaptive drills
+## Task 4 — Adaptive drills ✅
+
+**New:** `src/lib/adaptive.ts`, `src/views/TargetedView.vue`
+
+**Shipped:** weighted sampling over drill tags and the per-sign record, at
+`/targeted`. A sign never attempted weighs nothing rather than everything —
+unmet signs are the curriculum's job, and treating unknown as weak would fill
+practice with letters from lessons the learner has not reached. No
+spaced-repetition scheduler, as instructed.
+
 
 Once v2's per-character stats exist, generate practice sessions targeting a user's actual weaknesses: sample from the corpus weighted toward characters with high error rate or high latency.
 
@@ -107,9 +147,13 @@ Keep it simple: weighted random sampling over already-introduced characters. Res
 
 ---
 
-## Task 5 — Navigation
+## Task 5 — Navigation ✅
 
-**New:** `src/components/LessonMap.vue`
+**New:** `src/router/index.ts` and `src/views/` — practice, lesson map, lesson,
+targeted, progress
+
+**Shipped:** `vue-router`, with free practice keeping `/` and first place in the
+nav. An unmet prerequisite is a label on the map, never a barrier.
 
 The app is currently a single view (`App.vue` renders `TypingTrainer` directly, no router).
 
@@ -122,15 +166,19 @@ Add `vue-router` at this point. Keep free practice reachable in one click from a
 ## Risks
 
 - **Content authoring is the bottleneck**, not code. Tasks 1, 3, 4, 5 are perhaps a few focused sittings. Task 2 is an ongoing effort. Don't start the engine expecting the corpus to fill itself in.
-- **Scope creep toward "language learning app."** This is a *typing* trainer. Vocabulary, grammar, and reading comprehension are a different product. The romanization/gloss from v2 is the right amount of language support; stop there.
+- **Scope creep toward "language learning app."** This is a *typing* trainer. Vocabulary, grammar, and reading comprehension are a different product. The line moved tighter than this plan first drew it: [#17](https://github.com/BraedenKilburn/khmer-type/issues/17) cut romanization and gloss too, so the answer is **no language support at all**.
 - **v3 may not be necessary.** If v1 + v2 ship and nobody uses the app, a curriculum won't change that. Ship v2, see whether anyone engages, then decide.
 
 ---
 
 ## Definition of done
 
-- [ ] Every sentence carries generated feature tags and a difficulty score
-- [ ] Beginner drills exist for all 35 consonants and every dependent vowel sign
-- [ ] Lessons gate on accuracy, allow skipping, and include cumulative review
-- [ ] Adaptive practice targets a user's measured weak characters
-- [ ] Free practice remains one click away
+- [x] Every sentence carries generated feature tags and a difficulty score
+- [x] Beginner drills exist for all 33 consonants and every dependent vowel sign — mechanically. Real Khmer at the shallow end is still unwritten (Task 2)
+- [x] Lessons gate on accuracy, allow skipping, and include cumulative review
+- [x] Adaptive practice targets a user's measured weak characters
+- [x] Free practice remains one click away
+
+The consonant count is 33, not 35: `ឝ` and `ឞ` are transliteration letters for
+Pali and Sanskrit rather than letters of the alphabet, and no learner is drilled
+on them.

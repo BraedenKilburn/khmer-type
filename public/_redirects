@@ -1,0 +1,5 @@
+# The router uses real paths, not a hash, so /lessons is a URL the server is
+# asked for directly on a reload or a shared link. Hand every unmatched path to
+# the app and let the router decide — without this, every deep link 404s on
+# Cloudflare Pages.
+/*  /index.html  200
