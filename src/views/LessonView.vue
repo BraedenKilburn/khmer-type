@@ -1,15 +1,16 @@
 <script setup lang="ts">
+import { ROUTE } from '@/router'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import TypingTrainer from '@/components/TypingTrainer.vue'
 import { useLesson } from '@/composables/useLesson'
 import { lessonById } from '@/data/lessons'
-import { drillById } from '@/composables/useDrills'
+import { drillById } from '@/data/corpus'
 import type { Drill } from '@/data/corpus'
 
 const props = defineProps<{ id: string }>()
 
-const { state, clearedDrills, recordDrill } = useLesson()
+const { state, clearedDrills, scorerFor } = useLesson()
 
 const lesson = computed(() => lessonById(props.id))
 
@@ -22,23 +23,15 @@ const pool = computed<Drill[]>(() =>
 
 const cleared = computed(() => (lesson.value ? clearedDrills(lesson.value) : []))
 
-/**
- * Record the result against the gate.
- *
- * Accuracy only — speed follows accuracy, and gating on speed teaches people to
- * type badly and fast. The keystrokes-per-minute figure is reported to the
- * learner and ignored here on purpose.
- */
-function handleComplete({ drillId, accuracy }: { drillId: string; accuracy: number }) {
-  if (lesson.value) recordDrill(lesson.value.id, drillId, accuracy)
-}
+/** Runs here count towards this lesson's gate — see `useLesson().scorerFor`. */
+const scorer = computed(() => (lesson.value ? scorerFor(lesson.value.id) : undefined))
 </script>
 
 <template>
   <template v-if="lesson">
     <header class="lesson-header">
       <div>
-        <p class="crumb"><RouterLink :to="{ name: 'lessons' }">← All lessons</RouterLink></p>
+        <p class="crumb"><RouterLink :to="{ name: ROUTE.lessons }">← All lessons</RouterLink></p>
         <h2>{{ lesson.title }}</h2>
         <p class="description">{{ lesson.description }}</p>
       </div>
@@ -58,14 +51,14 @@ function handleComplete({ drillId, accuracy }: { drillId: string; accuracy: numb
     -->
     <p v-if="state(lesson) === 'passed'" class="passed">
       Lesson passed.
-      <RouterLink :to="{ name: 'lessons' }">Pick the next one</RouterLink>, or keep practising here.
+      <RouterLink :to="{ name: ROUTE.lessons }">Pick the next one</RouterLink>, or keep practising here.
     </p>
 
-    <TypingTrainer :pool="pool" order="sequential" @complete="handleComplete" />
+    <TypingTrainer :pool="pool" order="sequential" :scorer="scorer" />
   </template>
 
   <p v-else class="missing">
-    No such lesson. <RouterLink :to="{ name: 'lessons' }">Back to the lessons.</RouterLink>
+    No such lesson. <RouterLink :to="{ name: ROUTE.lessons }">Back to the lessons.</RouterLink>
   </p>
 </template>
 
@@ -76,7 +69,7 @@ function handleComplete({ drillId, accuracy }: { drillId: string; accuracy: numb
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  max-width: 860px;
+  max-width: var(--kt-measure-drill);
   width: 100%;
 
   h2 {
@@ -119,7 +112,7 @@ function handleComplete({ drillId, accuracy }: { drillId: string; accuracy: numb
 /* The one line of praise the app gives, so it gets the accent and nothing
    else — no fill, no box. */
 .passed {
-  max-width: 860px;
+  max-width: var(--kt-measure-drill);
   width: 100%;
   margin: 0;
   font-size: 0.75rem;

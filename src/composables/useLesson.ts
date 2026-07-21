@@ -10,6 +10,24 @@ export interface DrillResult {
   bestAccuracy: number
 }
 
+/**
+ * A finished run, offered to whoever is keeping score.
+ *
+ * Accuracy and nothing else. Speed follows accuracy, and a curriculum that
+ * gated on speed would teach people to type badly and fast — so `kpm` is
+ * reported to the learner in the completion dialog and is not part of this.
+ */
+export interface FinishedDrill {
+  drillId: string
+  accuracy: number
+}
+
+/**
+ * What to do with a finished run. Free practice has no scorer: a run that
+ * counts towards nothing is a deliberate choice, not a forgotten listener.
+ */
+export type DrillScorer = (finished: FinishedDrill) => void
+
 /** Per lesson, the drills cleared and how well. */
 export type Progress = Record<string, Record<string, DrillResult>>
 
@@ -71,6 +89,17 @@ export function useLesson() {
     }
   }
 
+  /**
+   * The scorer for one lesson — what a run finished inside it counts towards.
+   *
+   * Named and handed across the seam rather than wired as a listener at the
+   * call site, so "does this run count, and against what" is answered in one
+   * place and is testable without mounting the lesson.
+   */
+  function scorerFor(lessonId: string): DrillScorer {
+    return ({ drillId, accuracy }) => recordDrill(lessonId, drillId, accuracy)
+  }
+
   /** Where to pick up: the first lesson not yet passed. */
   const nextLesson = computed(() => curriculum.find((lesson) => !isPassed(lesson)))
 
@@ -83,6 +112,7 @@ export function useLesson() {
     isPassed,
     state,
     recordDrill,
+    scorerFor,
     nextLesson,
     passedCount,
     reset: () => {

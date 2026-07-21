@@ -473,3 +473,26 @@ export const corpus: Drill[] = [
   { id: 's307', km: 'គឺសម្រាប់ភ្ញៀវទេសចរណ៍។', kind: 'sentence' },
   { id: 's308', km: 'អាហ្វ្រិក គឺជាទ្វីបមួយ។', kind: 'sentence' },
 ]
+
+/**
+ * Free practice: real Khmer, never the key-location exercises.
+ *
+ * Here rather than with the drill picker because it is a question about the
+ * corpus, and the picker's business is which drill comes next, not which drills
+ * exist.
+ */
+export function sentences(): Drill[] {
+  return corpus.filter(({ kind }) => kind === 'sentence')
+}
+
+export function drillById(id: string): Drill | undefined {
+  return corpus.find((drill) => drill.id === id)
+}
+
+/**
+ * Remove Zero Width Space (ZWSP) code points. They carry no keystroke, so a
+ * drill that contains them would be impossible to finish.
+ */
+export function stripZwsp(km: string): string {
+  return km.replace(/​/g, '')
+}

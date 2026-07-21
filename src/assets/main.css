@@ -93,6 +93,18 @@
   --kt-heat-4: var(--p-primary-950);
   --kt-heat-4-ink: var(--p-surface-50);
 
+  /*
+   * The two measures the app is laid out on.
+   *
+   * Every block on every page is one of these two widths, and they were spelled
+   * out ten times across eight files before they were named. `page` is the
+   * chrome — the masthead, the lesson map, the heatmap; `drill` is narrower,
+   * because a line of Khmer being read one cluster at a time wants a shorter
+   * measure than a grid of cards does.
+   */
+  --kt-measure-page: 1200px;
+  --kt-measure-drill: 860px;
+
   /* Kept: the components below still read these. They now resolve onto the
      same ramp as everything else rather than onto stock Aura. */
   --p-surface-secondary: var(--kt-surface);

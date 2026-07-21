@@ -37,7 +37,7 @@ function startOver() {
 
 <style scoped>
 .progress-view {
-  max-width: 1200px;
+  max-width: var(--kt-measure-page);
   width: 100%;
 
   footer {

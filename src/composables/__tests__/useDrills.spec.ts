@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { stripZwsp, toSigns } from '@/composables/useDrills'
+import { stripZwsp } from '@/data/corpus'
 
 const ZWSP = '\u200B'
 
@@ -22,17 +22,5 @@ describe('stripZwsp', () => {
 
   it('yields an empty string for an empty drill', () => {
     expect(stripZwsp('')).toBe('')
-  })
-})
-
-describe('toSigns, re-exported', () => {
-  /*
-   * The decomposition ships from `@/lib/signs` alongside the other pure text
-   * logic, but the drills composable is where a caller looks for it. This test
-   * exists so that reach stays wired — the strip, the on-screen keyboard, and
-   * the per-sign stats all have to be reading the same one.
-   */
-  it('reaches the same decomposition the strip and the stats use', () => {
-    expect(toSigns('ស្វា')).toEqual(['ស', '្វ', 'ា'])
   })
 })

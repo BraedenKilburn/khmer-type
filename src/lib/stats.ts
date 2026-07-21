@@ -12,8 +12,6 @@
  * the weakness a learner most needs to see.
  */
 
-import { toSigns } from '@/lib/signs'
-
 export interface SignStat {
   /** The sign as typed — `្ក`, not `◌្ក`. */
   sign: string
@@ -32,31 +30,6 @@ export interface SignStat {
 
 /** Signs keyed by the sign itself. The shape that goes to `localStorage`. */
 export type SignStats = Record<string, SignStat>
-
-/**
- * Which sign each code unit of a drill belongs to.
- *
- * A subscript spans two keystrokes, so two consecutive positions answer with
- * the same sign — pressing COENG and pressing the consonant after it are both
- * attempts at `្ក`, which is the thing being learned.
- */
-export function signAtIndex(drill: string): string[] {
-  const positions: string[] = []
-
-  for (const sign of toSigns(drill)) {
-    for (let offset = 0; offset < sign.length; offset++) positions.push(sign)
-  }
-
-  return positions
-}
-
-/**
- * The sign a keystroke at `cursorIndex` is an attempt at, or `undefined` past
- * the end of the drill, where there is nothing to be right or wrong about.
- */
-export function expectedSignAt(drill: string, cursorIndex: number): string | undefined {
-  return signAtIndex(drill)[cursorIndex]
-}
 
 /**
  * Fold one keystroke into a stats record, returning a new one.

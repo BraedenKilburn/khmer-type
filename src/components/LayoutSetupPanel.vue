@@ -107,7 +107,7 @@ const activeOs = ref<Os>(detectOs(navigator.userAgent))
  * on the background.
  */
 .layout-setup {
-  max-width: 860px;
+  max-width: var(--kt-measure-drill);
   width: 100%;
   padding: 16px 20px;
   border-radius: var(--p-border-radius-lg);

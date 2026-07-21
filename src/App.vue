@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ROUTE } from '@/router'
 import { RouterLink, RouterView } from 'vue-router'
 import GlobalFooter from '@/components/GlobalFooter.vue'
 
@@ -7,10 +8,10 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
  * is an offer, not a funnel — see `@/router`.
  */
 const links = [
-  { name: 'practice', label: 'Practice' },
-  { name: 'lessons', label: 'Lessons' },
-  { name: 'targeted', label: 'Targeted' },
-  { name: 'progress', label: 'Progress' },
+  { name: ROUTE.practice, label: 'Practice' },
+  { name: ROUTE.lessons, label: 'Lessons' },
+  { name: ROUTE.targeted, label: 'Targeted' },
+  { name: ROUTE.progress, label: 'Progress' },
 ]
 </script>
 
@@ -23,7 +24,7 @@ const links = [
         underscore, which is the only thing here that gets a colour.
       -->
       <h1>
-        <RouterLink :to="{ name: 'practice' }" aria-label="Khmer Type — free practice">
+        <RouterLink :to="{ name: ROUTE.practice }" aria-label="Khmer Type — free practice">
           khmer<span class="mark">_</span>type
         </RouterLink>
       </h1>
@@ -59,7 +60,7 @@ main {
   justify-content: space-between;
   gap: 1rem 1.5rem;
   flex-wrap: wrap;
-  max-width: 1200px;
+  max-width: var(--kt-measure-page);
   width: 100%;
 
   h1 {

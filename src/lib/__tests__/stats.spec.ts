@@ -1,42 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  errorRate,
-  expectedSignAt,
-  hesitationMs,
-  recordAttempt,
-  signAtIndex,
-  weakestSigns,
-  type SignStats,
-} from '@/lib/stats'
-
-describe('signAtIndex', () => {
-  it('answers with the sign each keystroke is aimed at', () => {
-    // ស ្វ ា — four keystrokes, three signs, and the two presses of the
-    // subscript are both attempts at `្វ`.
-    expect(signAtIndex('ស្វា')).toEqual(['ស', '្វ', '្វ', 'ា'])
-  })
-
-  it('runs the whole drill, not one cluster', () => {
-    expect(signAtIndex('សូម')).toEqual(['ស', 'ូ', 'ម'])
-  })
-
-  it('is empty for an empty drill', () => {
-    expect(signAtIndex('')).toEqual([])
-  })
-})
-
-describe('expectedSignAt', () => {
-  it('names the sign under the cursor', () => {
-    expect(expectedSignAt('ស្វា', 0)).toBe('ស')
-    expect(expectedSignAt('ស្វា', 1)).toBe('្វ')
-    expect(expectedSignAt('ស្វា', 2)).toBe('្វ')
-    expect(expectedSignAt('ស្វា', 3)).toBe('ា')
-  })
-
-  it('has nothing to say past the end of the drill', () => {
-    expect(expectedSignAt('ក', 1)).toBeUndefined()
-  })
-})
+import { errorRate, hesitationMs, recordAttempt, weakestSigns, type SignStats } from '@/lib/stats'
 
 describe('recordAttempt', () => {
   it('counts an attempt and its time', () => {
