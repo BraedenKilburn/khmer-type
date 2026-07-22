@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import SelectButton from 'primevue/selectbutton'
 import { useStats } from '@/composables/useStats'
 import { BASE_CONSONANTS, SUBSCRIPT_CONSONANTS, displaySign } from '@/lib/signs'
-import { errorRate, hesitationMs, type SignStat, type WeaknessView } from '@/lib/stats'
+import { errorRate, hesitationMs, type SignStat, type SignMeasure } from '@/lib/stats'
 
 /**
  * Per-sign performance, as a picture.
@@ -20,11 +20,11 @@ import { errorRate, hesitationMs, type SignStat, type WeaknessView } from '@/lib
  */
 const { stats } = useStats()
 
-const views: { label: string; value: WeaknessView }[] = [
+const views: { label: string; value: SignMeasure }[] = [
   { label: 'Accuracy', value: 'accuracy' },
   { label: 'Hesitation', value: 'hesitation' },
 ]
-const view = ref<WeaknessView>('accuracy')
+const view = ref<SignMeasure>('accuracy')
 
 /**
  * Five steps of trouble, plus `undefined` for a sign never attempted.

@@ -42,8 +42,14 @@
  * elsewhere on the board.
  */
 
-/** COENG — stacks the following consonant beneath the preceding one. */
-export const COENG = '្'
+/*
+ * COENG is a fact about the script rather than about this layout, so it is
+ * stated once in `@/lib/signs` and re-exported here for the callers that reach
+ * for the board and the sign in the same breath. Two declarations of the code
+ * point the whole app turns on would be two things to keep true.
+ */
+export { COENG } from '@/lib/signs'
+import { COENG } from '@/lib/signs'
 
 export type Finger =
   | 'leftPinky'

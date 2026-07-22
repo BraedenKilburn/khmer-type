@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { ref } from 'vue'
+import { useDrillRun } from '@/composables/useDrillRun'
+import { useStats } from '@/composables/useStats'
+import { isolateRecords } from '@/testing/records'
 
 /**
- * The run reaches the per-sign record, which is held at module scope — so each
- * test gets a fresh registry and an empty `localStorage`.
+ * A run at one drill, over a per-sign record only this test can see — see
+ * `isolateRecords`. Still `async` at the call sites, which await ticks.
  */
-async function freshRun(drill: string | ReturnType<typeof ref<string>>, now?: () => number) {
-  vi.resetModules()
-  const { useDrillRun } = await import('@/composables/useDrillRun')
-  const { useStats } = await import('@/composables/useStats')
+function freshRun(drill: string | ReturnType<typeof ref<string>>, now?: () => number) {
   const source = typeof drill === 'string' ? () => drill : () => drill.value ?? ''
   return { run: useDrillRun(source, { now }), stats: useStats() }
 }
@@ -27,7 +27,7 @@ function clock(start = 0) {
 }
 
 beforeEach(() => {
-  localStorage.clear()
+  isolateRecords()
 })
 
 /** `ស` `្វ` `ា` — three signs, four keystrokes, one cluster. */
@@ -36,7 +36,7 @@ const DRILL = 'ស្វា'
 describe('useDrillRun', () => {
   describe('committing', () => {
     it('advances one keystroke per code point', async () => {
-      const { run } = await freshRun(DRILL)
+      const { run } = freshRun(DRILL)
 
       run.commit('ស')
 
@@ -45,7 +45,7 @@ describe('useDrillRun', () => {
     })
 
     it('splits a composed commit back into its keystrokes', async () => {
-      const { run, stats } = await freshRun(DRILL)
+      const { run, stats } = freshRun(DRILL)
 
       // However the IME delivered it, `ស្វា` is four keystrokes — ADR-0002.
       run.commit(DRILL)
@@ -57,7 +57,7 @@ describe('useDrillRun', () => {
     })
 
     it('refuses a keystroke past the end of the drill', async () => {
-      const { run, stats } = await freshRun('ក')
+      const { run, stats } = freshRun('ក')
 
       run.commit('ក')
       run.commit('ខ')
@@ -67,7 +67,7 @@ describe('useDrillRun', () => {
     })
 
     it('ignores an empty commit', async () => {
-      const { run } = await freshRun(DRILL)
+      const { run } = freshRun(DRILL)
 
       run.commit('')
 
@@ -77,7 +77,7 @@ describe('useDrillRun', () => {
 
   describe('the order the pure modules depend on', () => {
     it('records a keystroke against the sign it was aimed at, not the next one', async () => {
-      const { run, stats } = await freshRun(DRILL)
+      const { run, stats } = freshRun(DRILL)
 
       run.commit('ក')
 
@@ -89,7 +89,7 @@ describe('useDrillRun', () => {
 
     it('starts the clock at the first keystroke that lands, not the first refused', async () => {
       const { advance, now } = clock(1_000)
-      const { run } = await freshRun('ក', now)
+      const { run } = freshRun('ក', now)
 
       run.commit('a') // Latin — refused, and the clock must not start
       advance(60_000)
@@ -102,7 +102,7 @@ describe('useDrillRun', () => {
     it('does not charge the gap between drills to the next drill first sign', async () => {
       const { advance, now } = clock(1_000)
       const drill = ref(DRILL)
-      const { run, stats } = await freshRun(drill, now)
+      const { run, stats } = freshRun(drill, now)
 
       run.commit('ស')
       run.reset()
@@ -116,7 +116,7 @@ describe('useDrillRun', () => {
 
   describe('rewinding', () => {
     it('moves the cursor back without restoring accuracy', async () => {
-      const { run } = await freshRun(DRILL)
+      const { run } = freshRun(DRILL)
 
       run.commit('ក') // wrong
       run.rewind()
@@ -128,7 +128,7 @@ describe('useDrillRun', () => {
     })
 
     it('does not record a Backspace as an attempt', async () => {
-      const { run, stats } = await freshRun(DRILL)
+      const { run, stats } = freshRun(DRILL)
 
       run.commit('ស')
       run.rewind()
@@ -139,7 +139,7 @@ describe('useDrillRun', () => {
 
   describe('the typing line', () => {
     it('never splits a cluster', async () => {
-      const { run } = await freshRun(DRILL)
+      const { run } = freshRun(DRILL)
 
       run.commit('ស')
 
@@ -149,7 +149,7 @@ describe('useDrillRun', () => {
     })
 
     it('marks a cluster the cursor is still inside as gone wrong', async () => {
-      const { run } = await freshRun(DRILL)
+      const { run } = freshRun(DRILL)
 
       run.commit('ក')
 
@@ -157,7 +157,7 @@ describe('useDrillRun', () => {
     })
 
     it('hands the strip what was typed into the active cluster, not how much', async () => {
-      const { run } = await freshRun(DRILL)
+      const { run } = freshRun(DRILL)
 
       run.commit('ក')
 
@@ -166,7 +166,7 @@ describe('useDrillRun', () => {
     })
 
     it('has no active cluster between clusters', async () => {
-      const { run } = await freshRun('កក')
+      const { run } = freshRun('កក')
 
       run.commit('ក')
 
@@ -179,7 +179,7 @@ describe('useDrillRun', () => {
   describe('speed', () => {
     it('counts keystrokes rather than clusters', async () => {
       const { advance, now } = clock(1_000)
-      const { run } = await freshRun(DRILL, now)
+      const { run } = freshRun(DRILL, now)
 
       run.commit('ស')
       advance(60_000)
@@ -192,7 +192,7 @@ describe('useDrillRun', () => {
 
     it('reports nothing until the run is finished', async () => {
       const { advance, now } = clock(1_000)
-      const { run } = await freshRun(DRILL, now)
+      const { run } = freshRun(DRILL, now)
 
       run.commit('ស')
       advance(60_000)
@@ -204,7 +204,7 @@ describe('useDrillRun', () => {
 
   describe('the wrong layout', () => {
     it('is raised by a Latin letter, which no drill can match', async () => {
-      const { run } = await freshRun(DRILL)
+      const { run } = freshRun(DRILL)
 
       run.commit('s')
 
@@ -213,7 +213,7 @@ describe('useDrillRun', () => {
     })
 
     it('keeps the Khmer out of a partly-Latin composed commit', async () => {
-      const { run } = await freshRun(DRILL)
+      const { run } = freshRun(DRILL)
 
       run.commit('sស')
 
@@ -225,7 +225,7 @@ describe('useDrillRun', () => {
     })
 
     it('is lowered by a Khmer keystroke landing, which is the proof it was fixed', async () => {
-      const { run } = await freshRun(DRILL)
+      const { run } = freshRun(DRILL)
 
       run.commit('s')
       run.commit('ស')
@@ -234,7 +234,7 @@ describe('useDrillRun', () => {
     })
 
     it('survives a new drill, which fixes nothing about the installed layout', async () => {
-      const { run } = await freshRun(DRILL)
+      const { run } = freshRun(DRILL)
 
       run.commit('s')
       run.reset()
@@ -243,7 +243,7 @@ describe('useDrillRun', () => {
     })
 
     it('is lowered on request, for a user who has read the panel', async () => {
-      const { run } = await freshRun(DRILL)
+      const { run } = freshRun(DRILL)
 
       run.commit('s')
       run.dismissWrongLayout()
@@ -254,7 +254,7 @@ describe('useDrillRun', () => {
 
   describe('resetting', () => {
     it('clears the run without clearing the history', async () => {
-      const { run, stats } = await freshRun(DRILL)
+      const { run, stats } = freshRun(DRILL)
 
       run.commit('ក')
       run.reset()
@@ -266,7 +266,7 @@ describe('useDrillRun', () => {
 
     it('follows the drill when it changes underneath', async () => {
       const drill = ref(DRILL)
-      const { run } = await freshRun(drill)
+      const { run } = freshRun(drill)
 
       run.commit('ស')
       drill.value = 'ក'

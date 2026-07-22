@@ -11,7 +11,7 @@
  * a render-time concern only.
  */
 
-import { analyseDrill } from '@/lib/drillAnalysis'
+import { analyseDrill, type DrillCluster } from '@/lib/drillAnalysis'
 
 export type ClusterState = 'correct' | 'incorrect' | 'active' | 'active-incorrect' | 'untyped'
 
@@ -26,16 +26,15 @@ export function isActive(state: ClusterState): boolean {
   return state === 'active' || state === 'active-incorrect'
 }
 
-export interface RenderCluster {
-  text: string
+/**
+ * A cluster of the drill, plus the state it should be drawn in.
+ *
+ * Extends the analysis rather than restating two of its fields: `text` and
+ * `start` mean exactly what `DrillCluster` says they mean, and a second copy of
+ * that definition is a second thing to keep true.
+ */
+export interface RenderCluster extends DrillCluster {
   state: ClusterState
-  /**
-   * Where the cluster starts in the drill, in code units.
-   *
-   * The sign strip needs it: it decomposes the cluster the cursor is inside,
-   * and "how far into this cluster" is `cursor - start`.
-   */
-  start: number
 }
 
 /**
@@ -49,10 +48,13 @@ export interface RenderCluster {
  * the shaped run and free to style each sign — says which sign it was.
  */
 export function toRenderClusters(drill: string, typed: string, cursor: number): RenderCluster[] {
-  return analyseDrill(drill).clusters.map(({ text, start }) => ({
-    text,
-    start,
-    state: classify(text, typed.slice(start, start + text.length), cursor - start),
+  return analyseDrill(drill).clusters.map((cluster) => ({
+    ...cluster,
+    state: classify(
+      cluster.text,
+      typed.slice(cluster.start, cluster.start + cluster.text.length),
+      cursor - cluster.start,
+    ),
   }))
 }
 

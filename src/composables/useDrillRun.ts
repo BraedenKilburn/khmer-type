@@ -22,8 +22,8 @@ import { useStats } from '@/composables/useStats'
  * - the clock starts on the first keystroke that lands, not the first that was
  *   refused, or a wrong-layout learner's speed includes their trip through
  *   system settings
- * - the hesitation clock is cleared at the drill boundary, or the gap spent
- *   reading the next drill is charged to its first sign
+ * - a new drill gets a new recorder, or the gap spent reading it is charged to
+ *   its first sign as hesitation
  *
  * That order used to live in the component, which nothing tested. It lives
  * here now: the run is exercised through `commit` and `rewind` with no
@@ -40,9 +40,12 @@ export interface DrillRunOptions {
 }
 
 export function useDrillRun(drill: MaybeRefOrGetter<string>, { now = Date.now }: DrillRunOptions = {}) {
-  const { recordKeystroke, startDrill } = useStats()
+  const { recordRun } = useStats()
 
   const text = computed(() => toValue(drill))
+
+  /** The per-sign record's clock for the drill in front of the learner. */
+  let recorder = recordRun(text)
 
   /** Typed text, cursor, and the raw key sequence — see `@/lib/typingSession`. */
   const session = ref<TypingSession>(emptySession)
@@ -146,7 +149,7 @@ export function useDrillRun(drill: MaybeRefOrGetter<string>, { now = Date.now }:
     for (const keystroke of khmer) {
       const cursor = session.value.cursorIndex
       if (cursor >= text.value.length) break
-      recordKeystroke(text.value, cursor, keystroke, now())
+      recorder.keystroke(cursor, keystroke, now())
       session.value = commitText(session.value, text.value, keystroke)
     }
 
@@ -162,14 +165,14 @@ export function useDrillRun(drill: MaybeRefOrGetter<string>, { now = Date.now }:
   }
 
   /**
-   * Start a fresh run. Clears the hesitation clock too — the gap across a drill
-   * boundary is reading time, not the learner hesitating over the first sign.
+   * Start a fresh run, on a fresh recorder — the gap across a drill boundary is
+   * reading time, not the learner hesitating over the first sign.
    */
   function reset() {
     session.value = emptySession
     startedAt.value = null
     finishedAt.value = null
-    startDrill()
+    recorder = recordRun(text)
   }
 
   /** The user has read the setup panel and wants it gone. */

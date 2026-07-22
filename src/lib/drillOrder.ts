@@ -15,7 +15,7 @@
  */
 
 import type { Drill } from '@/data/corpus'
-import { sampleWeightedIndex } from '@/lib/adaptive'
+import { sampleWeightedIndex } from '@/lib/weakness'
 import type { DrillTags } from '@/lib/drillTags'
 import type { SignStats } from '@/lib/stats'
 

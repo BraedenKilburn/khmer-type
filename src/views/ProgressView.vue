@@ -1,22 +1,14 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
 import StatsHeatmap from '@/components/StatsHeatmap.vue'
-import { useStats } from '@/composables/useStats'
-import { useLesson } from '@/composables/useLesson'
+import { resetLearnerData } from '@/composables/records'
 
-const { clear } = useStats()
-const { reset: resetProgress } = useLesson()
-
-/**
- * Two records, cleared together.
- *
- * Keeping lesson progress after wiping the per-sign history would leave a
- * learner marked as having passed lessons the heatmap says they never typed.
+/*
+ * *Which* records a reset wipes is declared beside the records themselves — see
+ * `@/composables/records`. This view offers the button and nothing else,
+ * so a record added later cannot be forgotten here.
  */
-function startOver() {
-  clear()
-  resetProgress()
-}
+const startOver = resetLearnerData
 </script>
 
 <template>

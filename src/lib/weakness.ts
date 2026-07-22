@@ -1,10 +1,18 @@
 /**
- * Practice aimed at what the learner is actually bad at.
+ * How much each sign is worth practising, and what follows from that.
  *
- * The per-sign record already knows which signs cost errors and which cost
- * time; this turns that into a drill order. It is the payoff of the heatmap:
- * seeing that `្ត` is your worst sign is useful, and being handed drills full
- * of `្ត` is more useful.
+ * One score, read by everything that asks the question. It used to be two: the
+ * draw weighted by the score below, while the sentence above it — "weighted
+ * towards `្ត` `ា` `្ក`" — was written from a *different* ranking that read
+ * error rate alone. So targeted practice could name signs it was not aiming at,
+ * and
+ * silently omit the sign it was aiming at hardest: one the learner never gets
+ * wrong and always has to stop and think about.
+ *
+ * Hesitation is the reason the two disagreed and the reason this module ranks
+ * the way it does. A sign you get right after a visible pause is one you are
+ * deriving rather than recalling — see CONTEXT.md — and it is worth practising
+ * even though accuracy has nothing to say about it.
  *
  * Weighted sampling, deliberately — not a spaced-repetition scheduler. A
  * scheduler models when you will forget, which needs review history this app
@@ -14,7 +22,7 @@
 
 import type { Drill } from '@/data/corpus'
 import type { DrillTags } from '@/lib/drillTags'
-import { errorRate, hesitationMs, type SignStats } from '@/lib/stats'
+import { errorRate, hesitationMs, type SignStat, type SignStats } from '@/lib/stats'
 
 /** Above this, a sign is slow enough to be worth practising. Milliseconds. */
 const SLOW_MS = 600
@@ -39,6 +47,28 @@ export function signWeakness(sign: string, stats: SignStats): number {
 }
 
 /**
+ * The signs worth practising, worst first.
+ *
+ * What targeted practice says it is aiming at, and what the completion dialog
+ * offers as the thing to work on. Both read the same score the draw does, so
+ * the list and the draw cannot disagree.
+ *
+ * Signs with a single attempt are included — a learner who has seen a sign once
+ * and missed it has learned something worth telling them — but ties break
+ * towards the sign attempted more often, so a lucky miss does not outrank a
+ * consistent one. A sign that is quick and correct scores zero and is left out
+ * entirely: there is nothing to report about it.
+ */
+export function weakestSigns(stats: SignStats, limit = 5): SignStat[] {
+  return Object.values(stats)
+    .map((stat) => ({ stat, weakness: signWeakness(stat.sign, stats) }))
+    .filter(({ stat, weakness }) => stat.attempts > 0 && weakness > 0)
+    .sort((a, b) => b.weakness - a.weakness || b.stat.attempts - a.stat.attempts)
+    .slice(0, limit)
+    .map(({ stat }) => stat)
+}
+
+/**
  * A drill's weight: how much of what it asks for is weak.
  *
  * Averaged over the drill's distinct signs rather than summed, so a long
@@ -51,23 +81,6 @@ export function drillWeight(tags: DrillTags, stats: SignStats): number {
 
   const total = tags.signs.reduce((sum, sign) => sum + signWeakness(sign, stats), 0)
   return 0.1 + total / tags.signs.length
-}
-
-/**
- * Order a pool by weakness, worst first.
- *
- * Used to show what practice would target; `sampleWeighted` is what actually
- * picks. Both read the same weight, so the list and the draw never disagree.
- */
-export function byWeakness(
-  drills: readonly Drill[],
-  tags: Record<string, DrillTags>,
-  stats: SignStats,
-): Drill[] {
-  return [...drills]
-    .map((drill) => ({ drill, weight: tags[drill.id] ? drillWeight(tags[drill.id], stats) : 0 }))
-    .sort((a, b) => b.weight - a.weight || a.drill.id.localeCompare(b.drill.id))
-    .map(({ drill }) => drill)
 }
 
 /**
@@ -99,15 +112,4 @@ export function sampleWeightedIndex(
   }
 
   return drills.length - 1
-}
-
-/** The drill `sampleWeightedIndex` drew. */
-export function sampleWeighted(
-  drills: readonly Drill[],
-  tags: Record<string, DrillTags>,
-  stats: SignStats,
-  random: () => number = Math.random,
-): Drill | undefined {
-  const index = sampleWeightedIndex(drills, tags, stats, random)
-  return index === undefined ? undefined : drills[index]
 }

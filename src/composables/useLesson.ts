@@ -1,9 +1,6 @@
 import { computed } from 'vue'
-import { useStorage } from '@vueuse/core'
 import { curriculum, lessonById, type Lesson } from '@/data/lessons'
-
-/** Versioned, so the stored shape can change without being misread later. */
-const STORAGE_KEY = 'khmer-type:progress:v1'
+import { record } from '@/composables/records'
 
 export interface DrillResult {
   /** Best accuracy recorded for this drill, as a whole percent. */
@@ -31,8 +28,6 @@ export type DrillScorer = (finished: FinishedDrill) => void
 /** Per lesson, the drills cleared and how well. */
 export type Progress = Record<string, Record<string, DrillResult>>
 
-const progress = useStorage<Progress>(STORAGE_KEY, {})
-
 export type LessonState = 'passed' | 'started' | 'available' | 'locked'
 
 /**
@@ -44,6 +39,9 @@ export type LessonState = 'passed' | 'started' | 'available' | 'locked'
  * that goes — see docs/plans/v3-progression.md.
  */
 export function useLesson() {
+  /** Kept across sessions — see `@/composables/records`. */
+  const progress = record('progress')
+
   /** Drills of `lesson` cleared at or above its accuracy gate. */
   function clearedDrills(lesson: Lesson): string[] {
     const results = progress.value[lesson.id] ?? {}
@@ -115,8 +113,5 @@ export function useLesson() {
     scorerFor,
     nextLesson,
     passedCount,
-    reset: () => {
-      progress.value = {}
-    },
   }
 }
