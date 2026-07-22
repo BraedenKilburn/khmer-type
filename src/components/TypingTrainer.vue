@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, useTemplateRef, watch } from 'vue'
 import { useDrills } from '@/composables/useDrills'
-import type { DrillOrder } from '@/lib/drillOrder'
-import { sentences, type Drill } from '@/data/corpus'
+import type { PracticeSession } from '@/composables/practiceSession'
 import { useLayoutVariant } from '@/composables/useLayoutVariant'
 import { useDrillRun } from '@/composables/useDrillRun'
 import { useKeystrokeIntake } from '@/composables/useKeystrokeIntake'
@@ -12,7 +11,6 @@ import LayoutSetupPanel from '@/components/LayoutSetupPanel.vue'
 import LayoutVariantPicker from '@/components/LayoutVariantPicker.vue'
 import KhmerKeyboard from '@/components/KhmerKeyboard.vue'
 import { useKeyboardVisible } from '@/composables/useKeyboardVisible'
-import type { DrillScorer } from '@/composables/useLesson'
 import { useStats } from '@/composables/useStats'
 import type { SignStat } from '@/lib/stats'
 import Button from 'primevue/button'
@@ -20,22 +18,19 @@ import Dialog from 'primevue/dialog'
 import StatsHeatmap from '@/components/StatsHeatmap.vue'
 
 interface Props {
-  /** The drills to draw from. Defaults to free practice over the sentences. */
-  pool?: Drill[]
-  order?: DrillOrder
   /**
-   * Who is keeping score, if anyone. A lesson passes one built from its own id
-   * — see `useLesson().scorerFor`; free practice passes none, which is how it
-   * says a run here counts towards nothing.
+   * What the learner sat down to do — which drills, in what order, counting
+   * towards what. The trainer is the same surface for all three sessions and
+   * decides none of it; see `@/composables/practiceSession`.
    */
-  scorer?: DrillScorer
+  session: PracticeSession
 }
 
-const props = withDefaults(defineProps<Props>(), { order: 'random' })
+const props = defineProps<Props>()
 
 const { currentDrill, currentDrillId, position, setNextDrill } = useDrills({
-  pool: () => props.pool ?? sentences(),
-  order: props.order,
+  pool: () => props.session.pool,
+  order: props.session.order,
 })
 const { visible: isKeyboardVisible, toggle: toggleKeyboard } = useKeyboardVisible()
 const { weakest } = useStats()
@@ -119,7 +114,7 @@ watch(isComplete, (isCompleted) => {
 
   weakestSigns.value = weakest()
   if (currentDrillId.value) {
-    props.scorer?.({ drillId: currentDrillId.value, accuracy: accuracy.value })
+    props.session.scorer?.({ drillId: currentDrillId.value, accuracy: accuracy.value })
   }
 })
 
@@ -181,12 +176,8 @@ function resetTyping() {
   -->
   <LayoutSetupPanel v-if="isWrongLayout" @dismiss="dismissWrongLayout" />
   <div class="controls">
-    <!--
-      Only where the order means something: a lesson is a list to work through,
-      while free practice is a stream and "drill 4 of 308" would be a countdown
-      nobody asked for.
-    -->
-    <p v-if="order === 'sequential'" class="position" lang="en">
+    <!-- Only where the session says it means something — see `showsPosition`. -->
+    <p v-if="session.showsPosition" class="position" lang="en">
       Drill {{ position.index + 1 }} of {{ position.total }}
     </p>
     <Button

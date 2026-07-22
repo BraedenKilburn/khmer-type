@@ -75,25 +75,11 @@ export function hesitationMs(stat: SignStat | undefined): number | undefined {
   return stat.totalMs / stat.attempts
 }
 
-export type WeaknessView = 'accuracy' | 'hesitation'
-
 /**
- * The signs a learner is worst at, worst first.
+ * The two things measured per sign — see CONTEXT.md.
  *
- * Signs with a single attempt are included — a learner who has seen a sign once
- * and missed it has learned something worth telling them — but ties break
- * towards the sign attempted more often, so a lucky miss does not outrank a
- * consistent one.
+ * Two axes of one picture, which is why the heatmap offers both as views rather
+ * than picking one. *Which signs to practise* is a different question and is
+ * not answered from either alone — see `@/lib/weakness`.
  */
-export function weakestSigns(
-  stats: SignStats,
-  view: WeaknessView = 'accuracy',
-  limit = 5,
-): SignStat[] {
-  const score = view === 'accuracy' ? errorRate : hesitationMs
-
-  return Object.values(stats)
-    .filter((stat) => stat.attempts > 0 && (score(stat) ?? 0) > 0)
-    .sort((a, b) => (score(b) ?? 0) - (score(a) ?? 0) || b.attempts - a.attempts)
-    .slice(0, limit)
-}
+export type SignMeasure = 'accuracy' | 'hesitation'

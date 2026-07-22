@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import TypingTrainer from '@/components/TypingTrainer.vue'
 import { useStats } from '@/composables/useStats'
-import { corpus } from '@/data/corpus'
+import { targetedPractice } from '@/composables/practiceSession'
 import { displaySign } from '@/lib/signs'
 
 /**
@@ -14,11 +14,14 @@ import { displaySign } from '@/lib/signs'
  * signs that cost errors and the signs that cost time. It needs something to
  * aim at, so with no history recorded it says so rather than quietly serving
  * random drills and calling them targeted.
+ *
+ * The signs named below are ranked by the same score the draw weights by — see
+ * `@/lib/weakness` — so this sentence describes what actually happens.
  */
 const { weakest } = useStats()
 
-const targets = computed(() => weakest('accuracy', 6))
-const pool = computed(() => [...corpus])
+const targets = computed(() => weakest(6))
+const session = targetedPractice()
 </script>
 
 <template>
@@ -35,7 +38,7 @@ const pool = computed(() => [...corpus])
     </p>
   </header>
 
-  <TypingTrainer :pool="pool" order="adaptive" />
+  <TypingTrainer :session="session" />
 </template>
 
 <style scoped>

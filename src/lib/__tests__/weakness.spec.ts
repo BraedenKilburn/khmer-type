@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { byWeakness, drillWeight, sampleWeighted, signWeakness } from '@/lib/adaptive'
+import {
+  drillWeight,
+  sampleWeightedIndex,
+  signWeakness,
+  weakestSigns,
+} from '@/lib/weakness'
 import { tagDrill } from '@/lib/drillTags'
 import type { Drill } from '@/data/corpus'
 import type { SignStats } from '@/lib/stats'
@@ -16,6 +21,12 @@ const stats: SignStats = {
   ក: { sign: 'ក', attempts: 10, errors: 8, totalMs: 1_000 },
   ស: { sign: 'ស', attempts: 10, errors: 0, totalMs: 20_000 },
   // ម has never been attempted.
+}
+
+/** The drill `sampleWeightedIndex` drew, for the tests that read better that way. */
+function drew(random: () => number, pool: readonly Drill[] = drills) {
+  const index = sampleWeightedIndex(pool, tags, stats, random)
+  return index === undefined ? undefined : pool[index]
 }
 
 describe('signWeakness', () => {
@@ -40,6 +51,57 @@ describe('signWeakness', () => {
   })
 })
 
+describe('weakestSigns', () => {
+  const history: SignStats = {
+    'ក': { sign: 'ក', attempts: 10, errors: 1, totalMs: 2_000 },
+    '្ក': { sign: '្ក', attempts: 10, errors: 6, totalMs: 3_000 },
+    'ស': { sign: 'ស', attempts: 10, errors: 0, totalMs: 9_000 },
+    'ា': { sign: 'ា', attempts: 4, errors: 1, totalMs: 400 },
+  }
+
+  it('ranks the sign missed most often first', () => {
+    expect(weakestSigns(history)[0].sign).toBe('្ក')
+  })
+
+  /*
+   * The whole reason there is one score rather than two. Ranking by error rate
+   * alone dropped `ស` off the list entirely, while the draw was already
+   * weighting towards it — so targeted practice named signs it was not aiming
+   * at and stayed quiet about one it was.
+   */
+  it('includes a sign that is never wrong and always slow', () => {
+    expect(weakestSigns(history).map(({ sign }) => sign)).toContain('ស')
+  })
+
+  it('names the same signs the draw weights towards', () => {
+    const ranked = weakestSigns(history).map(({ sign }) => sign)
+    const byScore = [...ranked].sort((a, b) => signWeakness(b, history) - signWeakness(a, history))
+
+    expect(ranked).toEqual(byScore)
+  })
+
+  it('leaves out a sign that is quick and correct', () => {
+    const fine = { ...history, ង: { sign: 'ង', attempts: 10, errors: 0, totalMs: 1_000 } }
+    expect(weakestSigns(fine).map(({ sign }) => sign)).not.toContain('ង')
+  })
+
+  it('honours the limit', () => {
+    expect(weakestSigns(history, 1)).toHaveLength(1)
+  })
+
+  it('breaks a tie towards the sign attempted more often', () => {
+    const tied: SignStats = {
+      'ក': { sign: 'ក', attempts: 2, errors: 1, totalMs: 0 },
+      'ខ': { sign: 'ខ', attempts: 20, errors: 10, totalMs: 0 },
+    }
+    expect(weakestSigns(tied)[0].sign).toBe('ខ')
+  })
+
+  it('has nothing to show for an empty history', () => {
+    expect(weakestSigns({})).toEqual([])
+  })
+})
+
 describe('drillWeight', () => {
   it('weighs a drill by the weakness of what it asks for', () => {
     expect(drillWeight(tags.a, stats)).toBeGreaterThan(drillWeight(tags.c, stats))
@@ -56,24 +118,14 @@ describe('drillWeight', () => {
   })
 })
 
-describe('byWeakness', () => {
-  it('puts the drill full of the worst sign first', () => {
-    expect(byWeakness(drills, tags, stats)[0].id).toBe('a')
-  })
-
-  it('is stable when nothing has been recorded', () => {
-    expect(byWeakness(drills, tags, {}).map(({ id }) => id)).toEqual(['a', 'b', 'c'])
-  })
-})
-
-describe('sampleWeighted', () => {
+describe('sampleWeightedIndex', () => {
   it('draws the heaviest drill for a draw at the top of the range', () => {
     // Weights run in pool order, so a draw of 0 lands on the first drill.
-    expect(sampleWeighted(drills, tags, stats, () => 0)?.id).toBe('a')
+    expect(drew(() => 0)?.id).toBe('a')
   })
 
   it('reaches the last drill at the far end of the range', () => {
-    expect(sampleWeighted(drills, tags, stats, () => 0.999)?.id).toBe('c')
+    expect(drew(() => 0.999)?.id).toBe('c')
   })
 
   it('favours the weak drill over many draws', () => {
@@ -84,7 +136,7 @@ describe('sampleWeighted', () => {
 
     const counts = new Map<string, number>()
     for (let draw = 0; draw < 100; draw++) {
-      const drill = sampleWeighted(drills, tags, stats, sweep)!
+      const drill = drew(sweep)!
       counts.set(drill.id, (counts.get(drill.id) ?? 0) + 1)
     }
 
@@ -92,10 +144,10 @@ describe('sampleWeighted', () => {
   })
 
   it('has nothing to draw from an empty pool', () => {
-    expect(sampleWeighted([], tags, stats)).toBeUndefined()
+    expect(sampleWeightedIndex([], tags, stats)).toBeUndefined()
   })
 
   it('falls back to a plain draw when nothing is weighted', () => {
-    expect(sampleWeighted(drills, {}, {}, () => 0.5)?.id).toBe('b')
+    expect(sampleWeightedIndex(drills, {}, {}, () => 0.5)).toBe(1)
   })
 })

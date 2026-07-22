@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { errorRate, hesitationMs, recordAttempt, weakestSigns, type SignStats } from '@/lib/stats'
+import { errorRate, hesitationMs, recordAttempt, type SignStats } from '@/lib/stats'
 
 describe('recordAttempt', () => {
   it('counts an attempt and its time', () => {
@@ -60,41 +60,3 @@ describe('errorRate and hesitationMs', () => {
   })
 })
 
-describe('weakestSigns', () => {
-  const stats: SignStats = {
-    'ក': { sign: 'ក', attempts: 10, errors: 1, totalMs: 2000 },
-    '្ក': { sign: '្ក', attempts: 10, errors: 6, totalMs: 3000 },
-    'ស': { sign: 'ស', attempts: 10, errors: 0, totalMs: 9000 },
-    'ា': { sign: 'ា', attempts: 4, errors: 1, totalMs: 400 },
-  }
-
-  it('ranks by error rate for the accuracy view', () => {
-    expect(weakestSigns(stats, 'accuracy').map(({ sign }) => sign)).toEqual(['្ក', 'ា', 'ក'])
-  })
-
-  it('ranks by average wait for the hesitation view', () => {
-    // ស is never wrong and still the slowest by far — the signal accuracy
-    // alone cannot show.
-    expect(weakestSigns(stats, 'hesitation')[0].sign).toBe('ស')
-  })
-
-  it('leaves out signs with nothing to report', () => {
-    expect(weakestSigns(stats, 'accuracy').map(({ sign }) => sign)).not.toContain('ស')
-  })
-
-  it('honours the limit', () => {
-    expect(weakestSigns(stats, 'accuracy', 1)).toHaveLength(1)
-  })
-
-  it('breaks a tie towards the sign attempted more often', () => {
-    const tied: SignStats = {
-      'ក': { sign: 'ក', attempts: 2, errors: 1, totalMs: 0 },
-      'ខ': { sign: 'ខ', attempts: 20, errors: 10, totalMs: 0 },
-    }
-    expect(weakestSigns(tied, 'accuracy')[0].sign).toBe('ខ')
-  })
-
-  it('has nothing to show for an empty history', () => {
-    expect(weakestSigns({}, 'accuracy')).toEqual([])
-  })
-})

@@ -50,6 +50,10 @@ _Avoid_: Dataset, sentence list, bank
 An ordered group of drills that introduces a set of signs for the first time, with prerequisites and a pass threshold.
 _Avoid_: Level, unit, module
 
+**Practice session**:
+What the learner sat down to do: which drills, in what order, counting towards what. There are three — free practice, a lesson, and targeted practice — and they differ in nothing else.
+_Avoid_: Mode, session, practice type
+
 ## Measurement
 
 **Keystroke**:

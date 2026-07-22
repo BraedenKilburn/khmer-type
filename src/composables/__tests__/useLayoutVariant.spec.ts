@@ -1,19 +1,9 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
-
-/**
- * The composable holds its state at module scope — one variant for the whole
- * app, not one per component that asks. So each test gets a fresh module
- * registry and a cleared `localStorage`, which is also the closest thing to a
- * reload this suite can stage.
- */
-async function freshComposable() {
-  vi.resetModules()
-  const { useLayoutVariant } = await import('@/composables/useLayoutVariant')
-  return useLayoutVariant()
-}
+import { useLayoutVariant } from '@/composables/useLayoutVariant'
+import { isolateRecords } from '@/testing/records'
 
 const MAC_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15'
@@ -29,14 +19,16 @@ function onPlatform(userAgent: string) {
   Object.defineProperty(window.navigator, 'userAgent', { value: userAgent, configurable: true })
 }
 
+let records: ReturnType<typeof isolateRecords>
+
 beforeEach(() => {
-  localStorage.clear()
+  records = isolateRecords()
   onPlatform(WINDOWS_UA)
 })
 
 describe('useLayoutVariant', () => {
-  it('assumes NiDA until typing says otherwise', async () => {
-    const { variant } = await freshComposable()
+  it('assumes NiDA until typing says otherwise', () => {
+    const { variant } = useLayoutVariant()
     expect(variant.value).toBe('nida')
   })
 
@@ -46,15 +38,15 @@ describe('useLayoutVariant', () => {
    * learner actually sees, and a fixed NiDA default meant they sat on the wrong
    * board — wrong about the spacebar, the most-pressed key there is.
    */
-  it('assumes Apple’s layout on a Mac, before anything has been typed', async () => {
+  it('assumes Apple’s layout on a Mac, before anything has been typed', () => {
     onPlatform(MAC_UA)
-    const { variant } = await freshComposable()
+    const { variant } = useLayoutVariant()
     expect(variant.value).toBe('macos')
   })
 
-  it('still lets a keystroke overrule the platform guess', async () => {
+  it('still lets a keystroke overrule the platform guess', () => {
     onPlatform(MAC_UA)
-    const { variant, observeKeystroke } = await freshComposable()
+    const { variant, observeKeystroke } = useLayoutVariant()
 
     // A NiDA layout installed on a Mac: the evidence beats the machine.
     observeKeystroke('Slash', 'shift', '?')
@@ -62,30 +54,30 @@ describe('useLayoutVariant', () => {
     expect(variant.value).toBe('nida')
   })
 
-  it('still lets the user overrule the platform guess', async () => {
+  it('still lets the user overrule the platform guess', () => {
     onPlatform(MAC_UA)
-    const { variant, override } = await freshComposable()
+    const { variant, override } = useLayoutVariant()
 
     override.value = 'nida'
 
     expect(variant.value).toBe('nida')
   })
 
-  it('switches to macOS on a keystroke only Apple’s layout explains', async () => {
-    const { variant, observeKeystroke } = await freshComposable()
+  it('switches to macOS on a keystroke only Apple’s layout explains', () => {
+    const { variant, observeKeystroke } = useLayoutVariant()
     observeKeystroke('Slash', 'shift', 'ឯ')
     expect(variant.value).toBe('macos')
   })
 
-  it('stays put through keystrokes that discriminate nothing', async () => {
-    const { variant, observeKeystroke } = await freshComposable()
+  it('stays put through keystrokes that discriminate nothing', () => {
+    const { variant, observeKeystroke } = useLayoutVariant()
     observeKeystroke('KeyK', 'base', 'ក')
     observeKeystroke('KeyJ', 'base', '្')
     expect(variant.value).toBe('nida')
   })
 
-  it('never lets a contradicting keystroke overrule the user', async () => {
-    const { variant, override, observeKeystroke } = await freshComposable()
+  it('never lets a contradicting keystroke overrule the user', () => {
+    const { variant, override, observeKeystroke } = useLayoutVariant()
     override.value = 'nida'
 
     observeKeystroke('Slash', 'shift', 'ឯ')
@@ -93,8 +85,8 @@ describe('useLayoutVariant', () => {
     expect(variant.value).toBe('nida')
   })
 
-  it('lets an override take over a detection already made', async () => {
-    const { variant, override, observeKeystroke } = await freshComposable()
+  it('lets an override take over a detection already made', () => {
+    const { variant, override, observeKeystroke } = useLayoutVariant()
     observeKeystroke('Slash', 'shift', 'ឯ')
     expect(variant.value).toBe('macos')
 
@@ -104,25 +96,29 @@ describe('useLayoutVariant', () => {
   })
 
   it('persists the override across a reload', async () => {
-    const first = await freshComposable()
-    first.override.value = 'macos'
+    useLayoutVariant().override.value = 'macos'
+    await nextTick()
 
-    const reloaded = await freshComposable()
+    records.reload()
+    const reloaded = useLayoutVariant()
+
     expect(reloaded.override.value).toBe('macos')
     expect(reloaded.variant.value).toBe('macos')
   })
 
   it('does not persist a detection — a laptop is not the machine you are on', async () => {
-    const first = await freshComposable()
+    const first = useLayoutVariant()
     first.observeKeystroke('Slash', 'shift', 'ឯ')
     expect(first.variant.value).toBe('macos')
+    await nextTick()
 
-    const reloaded = await freshComposable()
-    expect(reloaded.variant.value).toBe('nida')
+    records.reload()
+
+    expect(useLayoutVariant().variant.value).toBe('nida')
   })
 
-  it('clearing the override hands the question back to detection', async () => {
-    const { variant, override, observeKeystroke } = await freshComposable()
+  it('clearing the override hands the question back to detection', () => {
+    const { variant, override, observeKeystroke } = useLayoutVariant()
     override.value = 'nida'
     observeKeystroke('Slash', 'shift', 'ឯ')
     override.value = null
@@ -134,12 +130,18 @@ describe('useLayoutVariant', () => {
   })
 
   it('stores the override under a versioned key', async () => {
-    const { override } = await freshComposable()
-    override.value = 'macos'
+    useLayoutVariant().override.value = 'macos'
 
     // `useStorage` writes on a watcher, so the value lands after the tick.
     await nextTick()
 
-    expect(localStorage.getItem('khmer-type:layout-variant:v1')).toBe('macos')
+    expect(records.storage.getItem('khmer-type:layout-variant:v1')).toBe('macos')
+  })
+
+  it('never writes a detection down', async () => {
+    useLayoutVariant().observeKeystroke('Slash', 'shift', 'ឯ')
+    await nextTick()
+
+    expect(records.storage.getItem('khmer-type:layout-detected:v1')).toBeNull()
   })
 })

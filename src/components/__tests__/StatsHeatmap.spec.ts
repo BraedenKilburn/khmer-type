@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import StatsHeatmap from '@/components/StatsHeatmap.vue'
 import { useStats } from '@/composables/useStats'
 import { BASE_CONSONANTS } from '@/lib/signs'
+import { isolateRecords } from '@/testing/records'
 
-const { recordKeystroke, clear } = useStats()
+let records: ReturnType<typeof isolateRecords>
 
 /**
  * A sign typed `attempts` times, `errors` of them wrong, `ms` apart.
@@ -17,8 +18,9 @@ const { recordKeystroke, clear } = useStats()
  * point: a subscript takes two presses and one is enough to stage.
  */
 function type(sign: string, attempts: number, errors: number, ms: number) {
+  const run = useStats().recordRun(sign)
   for (let attempt = 0; attempt < attempts; attempt++) {
-    recordKeystroke(sign, 0, attempt < errors ? 'ឞ' : sign[0], attempt * ms)
+    run.keystroke(0, attempt < errors ? 'ឞ' : sign[0], attempt * ms)
   }
 }
 
@@ -27,8 +29,7 @@ function cellFor(wrapper: ReturnType<typeof mount>, sign: string) {
 }
 
 beforeEach(() => {
-  clear()
-  localStorage.clear()
+  records = isolateRecords()
 })
 
 describe('StatsHeatmap', () => {
@@ -114,17 +115,16 @@ describe('StatsHeatmap', () => {
     expect(legend.text()).toContain('not yet typed')
   })
 
-  it('reflects stats persisted from an earlier session', async () => {
-    localStorage.setItem(
+  it('reflects stats persisted from an earlier session', () => {
+    records.storage.setItem(
       'khmer-type:stats:v1',
       JSON.stringify({ 'ក': { sign: 'ក', attempts: 10, errors: 9, totalMs: 100 } }),
     )
 
-    // The record is read from storage when its module first loads, so a
-    // reload is staged by handing the component a fresh module registry.
-    vi.resetModules()
-    const Reloaded = (await import('@/components/StatsHeatmap.vue')).default
-    const wrapper = mount(Reloaded)
+    // A record is read from its store the first time it is asked for, so the
+    // earlier session is staged by planting it and then reloading into it.
+    records.reload()
+    const wrapper = mount(StatsHeatmap)
 
     expect(cellFor(wrapper, 'ក')!.text()).toContain('90%')
     expect(cellFor(wrapper, 'ក')!.classes()).toContain('level-4')

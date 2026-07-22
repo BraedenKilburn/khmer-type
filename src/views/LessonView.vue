@@ -4,27 +4,19 @@ import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import TypingTrainer from '@/components/TypingTrainer.vue'
 import { useLesson } from '@/composables/useLesson'
+import { lessonSession } from '@/composables/practiceSession'
 import { lessonById } from '@/data/lessons'
-import { drillById } from '@/data/corpus'
-import type { Drill } from '@/data/corpus'
 
 const props = defineProps<{ id: string }>()
 
-const { state, clearedDrills, scorerFor } = useLesson()
+const { state, clearedDrills } = useLesson()
 
 const lesson = computed(() => lessonById(props.id))
 
-/** The lesson's drills, in the order it lays them out. */
-const pool = computed<Drill[]>(() =>
-  (lesson.value?.drills ?? [])
-    .map((drillId) => drillById(drillId))
-    .filter((drill): drill is Drill => Boolean(drill)),
-)
-
 const cleared = computed(() => (lesson.value ? clearedDrills(lesson.value) : []))
 
-/** Runs here count towards this lesson's gate — see `useLesson().scorerFor`. */
-const scorer = computed(() => (lesson.value ? scorerFor(lesson.value.id) : undefined))
+/** Which drills, in what order, counting towards what — all four in one place. */
+const session = computed(() => (lesson.value ? lessonSession(lesson.value) : undefined))
 </script>
 
 <template>
@@ -54,7 +46,7 @@ const scorer = computed(() => (lesson.value ? scorerFor(lesson.value.id) : undef
       <RouterLink :to="{ name: ROUTE.lessons }">Pick the next one</RouterLink>, or keep practising here.
     </p>
 
-    <TypingTrainer :pool="pool" order="sequential" :scorer="scorer" />
+    <TypingTrainer v-if="session" :session="session" />
   </template>
 
   <p v-else class="missing">
